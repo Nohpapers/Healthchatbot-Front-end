@@ -29,7 +29,23 @@
   }
 
   /* Filled icon variant (e.g. the active nav item) */
-  .material-symbols-outlined.filled {
+  .material-symbols-outlined.filled,
+  .material-symbols-outlined.fill-icon {
     font-variation-settings: 'FILL' 1;
   }
+}
+
+/* Thin custom scrollbars (WebKit) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0e3e5;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c7c5cc;
 }

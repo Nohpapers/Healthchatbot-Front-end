@@ -69,6 +69,7 @@ module.exports = {
         xs: '4px',
         lg: '24px',
         'margin-mobile': '16px',
+        'container-padding': '24px',
       },
       fontFamily: {
         'body-md': ['Inter'],

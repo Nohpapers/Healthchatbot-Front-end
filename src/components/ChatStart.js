@@ -1,9 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { icon: 'history', label: '히스토리' },
-  { icon: 'monitoring', label: '통계 분석' },
-  { icon: 'settings', label: '설정' },
+  { icon: 'history', label: '히스토리', to: '/history' },
+  { icon: 'monitoring', label: '통계 분석', to: '/insights' },
+  { icon: 'settings', label: '설정', to: '/settings' },
 ];
 
 const SUGGESTIONS = [
@@ -34,6 +35,8 @@ const NAV_ITEM_BASE =
   'flex w-full cursor-pointer items-center space-x-3 px-6 py-3 text-left transition-colors';
 
 function SideNavBar() {
+  const navigate = useNavigate();
+
   return (
     <nav className="fixed left-0 top-0 z-40 hidden h-full w-72 flex-col border-r border-outline-variant bg-surface-container-low shadow-sm lg:flex">
       {/* Header */}
@@ -78,10 +81,11 @@ function SideNavBar() {
             </button>
           </li>
           {/* Inactive tabs */}
-          {NAV_ITEMS.map(({ icon, label }) => (
+          {NAV_ITEMS.map(({ icon, label, to }) => (
             <li key={label}>
               <button
                 type="button"
+                onClick={() => to && navigate(to)}
                 className={`${NAV_ITEM_BASE} duration-200 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface`}
               >
                 <span className="material-symbols-outlined">{icon}</span>
