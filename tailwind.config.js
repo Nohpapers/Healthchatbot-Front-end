@@ -72,6 +72,7 @@ module.exports = {
         'container-padding': '24px',
       },
       fontFamily: {
+        sans: ["'Anonymous Pro'", 'monospace'],
         'anonymous': ["'Anonymous Pro'", 'monospace'],
         'body-md': ['Inter'],
         'headline-sm': ['Hanken Grotesk'],

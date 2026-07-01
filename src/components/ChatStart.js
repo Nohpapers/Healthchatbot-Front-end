@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 const mono = { fontFamily: "'Anonymous Pro', monospace" };
 
 /* ─── Figma 아이콘 에셋 URL ─── */
-const imgIconHistory = 'https://www.figma.com/api/mcp/asset/a1fe8fc5-1bd2-46a8-b33f-d77c0b2ac65f';
-const imgIconData    = 'https://www.figma.com/api/mcp/asset/73431efc-ac3a-49a7-9083-6415102890ee';
-const imgIconProfile = 'https://www.figma.com/api/mcp/asset/0fcff7bc-86a2-4d45-b928-77a81bacf2d2';
-const imgIconSet     = 'https://www.figma.com/api/mcp/asset/73846766-ffee-4ebc-be45-4241f6c275dd';
+const imgIconHistory = 'https://www.figma.com/api/mcp/asset/90a8cf4c-6e6c-466f-8254-ed6a462e2802';
+const imgIconData    = 'https://www.figma.com/api/mcp/asset/8348fd0f-e324-4ef8-958e-848f6da7d5f9';
+const imgIconProfile = 'https://www.figma.com/api/mcp/asset/1e2296fb-0b08-4f0e-9e11-2ef89d24af66';
+const imgIconSet     = 'https://www.figma.com/api/mcp/asset/ca181880-f5c9-4613-b9f5-131e03beb3e2';
 const imgIconLogout  = 'https://www.figma.com/api/mcp/asset/cc3778f0-722f-4175-8682-5ac385b859a9';
 
 const CHIPS = ['식사량 추천', '운동 추천', '건강루틴 추천', '러닝 루틴'];
@@ -50,36 +50,14 @@ function ApexLogo({ dark = false }) {
 
 /* ─── 막대 그래프 ─── */
 function BarGraph() {
-  const maxBarPx = 60; // 높이에 맞춰 조정
   return (
-    <div className="flex-1 border border-[#b7bac4] h-[90px] flex flex-col px-[3px] pt-[5px] pb-0 overflow-hidden">
-      {/* 수평 가이드라인 */}
-      <div className="relative flex-1">
-        {[0, 33, 66, 100].map(pct => (
-          <div
-            key={pct}
-            className="absolute w-full bg-[#d9d9d9]"
-            style={{ height: 1, top: `${pct}%` }}
-          />
-        ))}
-        {/* 막대 */}
-        <div className="absolute inset-0 flex items-end gap-[2px]">
-          {BAR_HEIGHTS.map((h, i) => (
-            <div key={i} className="flex-1 flex justify-center items-end h-full">
-              <div
-                className="bg-[#4b4e59]"
-                style={{ width: 10, height: Math.round(h * maxBarPx / 100) }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* 날짜 행 */}
-      <div className="flex gap-[2px] shrink-0" style={{ height: 9 }}>
-        {DATES.map((d, i) => (
-          <div key={i} className="flex-1 flex justify-center">
-            <span style={{ fontSize: 4.5, color: '#b7bac4', lineHeight: '9px', whiteSpace: 'nowrap' }}>
-              {d}
+    <div className="flex-1 border border-[#b7bac4] px-1 py-1 h-[61px]">
+      <div className="flex items-end justify-around h-full gap-[2px]">
+        {BAR_HEIGHTS.map((h, i) => (
+          <div key={i} className="flex flex-col items-center justify-end h-full">
+            <div className="bg-[#4b4e59] w-[10px]" style={{ height: `${h}%` }} />
+            <span style={{ ...mono, fontSize: '5px', color: '#b7bac4', marginTop: 2 }}>
+              {DATES[i]}
             </span>
           </div>
         ))}
@@ -92,17 +70,17 @@ function BarGraph() {
 function InbodyRow({ label, value }) {
   return (
     <div className="flex gap-3 items-center">
-      <div className="bg-[#161415] flex flex-col items-center justify-center gap-2 py-2 h-[90px] w-[130px] shrink-0">
-        <span style={{ ...mono, fontSize: 10, fontWeight: 700, color: '#b7bac4', textAlign: 'center', padding: '0 6px' }}>
+      <div className="bg-[#161415] flex flex-col items-center justify-center gap-1 py-1 h-[61px] w-[110px] shrink-0">
+        <span style={{ ...mono, fontSize: 7, fontWeight: 700, color: '#b7bac4', textAlign: 'center', padding: '0 4px' }}>
           {label}
         </span>
-        <span style={{ ...mono, fontSize: 18, fontWeight: 700, color: '#fff' }}>{value}</span>
-        <div className="border border-[#b7bac4] rounded-full px-3 py-0.5">
-          <span style={{ ...mono, fontSize: 9, fontWeight: 700, color: '#fff' }}>표준</span>
+        <span style={{ ...mono, fontSize: 15, fontWeight: 700, color: '#fff' }}>{value}</span>
+        <div className="border border-[#b7bac4] rounded-full px-2">
+          <span style={{ ...mono, fontSize: 7, fontWeight: 700, color: '#fff' }}>표준</span>
         </div>
       </div>
       <BarGraph />
-      <div className="flex flex-col justify-around w-8 shrink-0" style={{ height: 90 }}>
+      <div className="flex flex-col justify-around w-8 shrink-0" style={{ height: 61 }}>
         {['68.0','66.0','64.0','62.0','60.0'].map(v => (
           <span key={v} className="text-right block" style={{ ...mono, fontSize: 6, color: '#b7bac4' }}>{v}</span>
         ))}
@@ -323,7 +301,7 @@ export default function ChatStart() {
 
                   {/* APEXAI 로고 카드 */}
                   <div className="bg-[#161415] w-[80px] shrink-0 flex flex-col items-center
-                                  justify-end pb-4" style={{ minHeight: 217 }}>
+                                  justify-end pb-4" style={{ min1Height: 217 }}>
                     <ApexLogo dark />
                   </div>
                 </div>

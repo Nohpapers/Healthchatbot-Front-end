@@ -35,8 +35,8 @@
   }
 }
 
-/* Anonymous Pro — @layer 밖이라 Tailwind preflight보다 우선순위 높음 */
-.page-chat {
+/* Anonymous Pro 전체 적용 */
+html {
   font-family: 'Anonymous Pro', monospace;
 }
 
