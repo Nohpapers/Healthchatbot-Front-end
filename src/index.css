@@ -35,6 +35,11 @@
   }
 }
 
+/* Anonymous Pro — @layer 밖이라 Tailwind preflight보다 우선순위 높음 */
+.page-chat {
+  font-family: 'Anonymous Pro', monospace;
+}
+
 /* Thin custom scrollbars (WebKit) */
 ::-webkit-scrollbar {
   width: 6px;

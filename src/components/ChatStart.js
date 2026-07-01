@@ -1,247 +1,341 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const NAV_ITEMS = [
-  { icon: 'history', label: '히스토리', to: '/history' },
-  { icon: 'monitoring', label: '통계 분석', to: '/insights' },
-  { icon: 'settings', label: '설정', to: '/settings' },
+const mono = { fontFamily: "'Anonymous Pro', monospace" };
+
+/* ─── Figma 아이콘 에셋 URL ─── */
+const imgIconHistory = 'https://www.figma.com/api/mcp/asset/a1fe8fc5-1bd2-46a8-b33f-d77c0b2ac65f';
+const imgIconData    = 'https://www.figma.com/api/mcp/asset/73431efc-ac3a-49a7-9083-6415102890ee';
+const imgIconProfile = 'https://www.figma.com/api/mcp/asset/0fcff7bc-86a2-4d45-b928-77a81bacf2d2';
+const imgIconSet     = 'https://www.figma.com/api/mcp/asset/73846766-ffee-4ebc-be45-4241f6c275dd';
+const imgIconLogout  = 'https://www.figma.com/api/mcp/asset/cc3778f0-722f-4175-8682-5ac385b859a9';
+
+const CHIPS = ['식사량 추천', '운동 추천', '건강루틴 추천', '러닝 루틴'];
+const WORKOUT_TYPES = ['상체', '하체', '유산소'];
+const INBODY_ROWS = [
+  { label: '체중 (kg)',     value: '00.0' },
+  { label: '골격근량(kg)',  value: '00.0' },
+  { label: '체지방량 (kg)', value: '00.0' },
 ];
-
-const SUGGESTIONS = [
-  {
-    icon: 'restaurant',
-    title: '맞춤형 식단 추천',
-    desc: '현재 건강 상태와 목표에 맞춘 일주일 단위의 식단 계획을 받아보세요.',
-  },
-  {
-    icon: 'fitness_center',
-    title: '주간 운동 루틴',
-    desc: '근력 향상 및 체지방 감소를 위한 최적화된 운동 스케줄을 설계합니다.',
-  },
-  {
-    icon: 'self_improvement',
-    title: '스트레스 관리',
-    desc: '수면 패턴 분석 및 멘탈 헬스케어를 위한 명상 가이드를 제공합니다.',
-  },
-  {
-    icon: 'query_stats',
-    title: '골격근 데이터 분석',
-    desc: '최근 체성분 검사 결과를 바탕으로 한 심층적인 변화 추이를 확인하세요.',
-  },
+const PROFILE_LINES = [
+  '성명. 000', '성별. 남성', '키. 000cm',
+  '체중. 000kg', '기초대사량. 000kcal',
+  '목표. 0000 증가', '전날 운동. 상체 운동',
 ];
+const BAR_HEIGHTS = [40, 65, 35, 70, 45, 55, 28];
+const DATES = ['26.06.20','26.06.20','26.06.20','26.06.20','26.06.20','26.06.20','26.06.20'];
 
-// 사이드바 메뉴 항목 공통 스타일 (아직 라우트가 없는 자리표시 버튼)
-const NAV_ITEM_BASE =
-  'flex w-full cursor-pointer items-center space-x-3 px-6 py-3 text-left transition-colors';
-
-function SideNavBar() {
-  const navigate = useNavigate();
-
+/* ─── APEXAI 로고 ─── */
+function ApexLogo({ dark = false }) {
+  const border = dark ? 'border-[#b7bac4]' : 'border-[#161415]';
+  const text   = dark ? 'text-white'       : 'text-[#161415]';
+  const sub    = dark ? 'text-[#b7bac4]'   : 'text-[#161415]';
+  const dot    = dark ? 'bg-[#b7bac4]'     : 'bg-[#161415]';
+  const size   = dark ? 44 : 66;
+  const fs     = dark ? 22 : 34;
   return (
-    <nav className="fixed left-0 top-0 z-40 hidden h-full w-72 flex-col border-r border-outline-variant bg-surface-container-low shadow-sm lg:flex">
-      {/* Header */}
-      <div className="flex items-center space-x-4 border-b border-outline-variant/50 p-6">
-        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border border-outline-variant bg-surface-container-high">
-          <img
-            alt="User profile"
-            className="h-full w-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbYPgpmHhLqGsijj3lbMOGia3dWVDyPzEff30c08clWBKv41QEyNvF91dPmfg_wN8CuNYUgX32gZ7UGbKyiN4bemNeNrf4n7zQFl9t3yjADs_6TERxiI0CcxL5_0BfWqszfA3NZJct4thH77fAO4HAujt9d2tVxyCQdGvijVsj63sBWe81LQwTm7sZyD8Oli5krux4dqTbu48_iJzbelElCHJu_f1znwQ7QHr95ZYnVWVKa10E9WnXZ2gKbSi8DPHrYoPu83aRz6qA"
-          />
-        </div>
-        <div>
-          <h2 className="font-headline-sm text-headline-sm tracking-tight text-primary">
-            Health Assistant
-          </h2>
-          <p className="font-body-sm text-body-sm text-on-surface-variant">AI-Driven Wellness</p>
-        </div>
+    <div className="flex flex-col items-center">
+      <div
+        className={`relative border ${border} flex items-center justify-center`}
+        style={{ width: size, height: size }}
+      >
+        <span className={`font-bold ${text}`} style={{ ...mono, fontSize: fs }}> A</span>
+        <div className={`absolute top-0 right-0 w-1.5 h-1.5 ${dot} rounded-full -translate-y-0.5 translate-x-0.5`} />
       </div>
-
-      {/* CTA */}
-      <div className="p-4">
-        <button
-          type="button"
-          className="flex w-full items-center justify-center space-x-2 rounded-lg bg-primary px-4 py-3 font-label-md text-label-md text-on-primary shadow-sm transition-colors hover:bg-inverse-surface"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>새 상담 시작</span>
-        </button>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex-1 overflow-y-auto py-2">
-        <ul className="space-y-1">
-          {/* Active tab: Chat */}
-          <li>
-            <button
-              type="button"
-              className={`${NAV_ITEM_BASE} border-r-4 border-primary bg-surface-container-high font-bold text-primary`}
-            >
-              <span className="material-symbols-outlined filled">chat</span>
-              <span className="font-label-md text-label-md">채팅</span>
-            </button>
-          </li>
-          {/* Inactive tabs */}
-          {NAV_ITEMS.map(({ icon, label, to }) => (
-            <li key={label}>
-              <button
-                type="button"
-                onClick={() => to && navigate(to)}
-                className={`${NAV_ITEM_BASE} duration-200 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface`}
-              >
-                <span className="material-symbols-outlined">{icon}</span>
-                <span className="font-label-md text-label-md">{label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Footer / Agent Status */}
-      <div className="mt-auto border-t border-outline-variant/50">
-        <ul className="py-2">
-          <li>
-            <button
-              type="button"
-              className={`${NAV_ITEM_BASE} duration-200 text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface`}
-            >
-              <span className="material-symbols-outlined">help</span>
-              <span className="font-label-md text-label-md">도움말</span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              className={`${NAV_ITEM_BASE} duration-200 text-error hover:bg-error/10`}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              <span className="font-label-md text-label-md">로그아웃</span>
-            </button>
-          </li>
-        </ul>
-        <div className="flex items-center space-x-2 border-t border-outline-variant/50 bg-surface-container px-6 py-4 text-xs text-on-surface-variant">
-          <span className="h-2 w-2 rounded-full bg-[#10b981]" />
-          <span className="font-label-sm text-label-sm">System Online</span>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function TopAppBar() {
-  return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-outline-variant/50 bg-surface px-6 shadow-sm">
-      {/* Brand (mobile only) */}
-      <div className="lg:hidden">
-        <span className="font-headline-md text-headline-md font-bold text-primary">HealthAI</span>
-      </div>
-      {/* Navigation links (desktop) */}
-      <div className="hidden flex-1 justify-center lg:flex">
-        <nav className="flex space-x-8">
-          {['운동', '영양', '코칭'].map((label) => (
-            <button
-              key={label}
-              type="button"
-              className="flex h-16 cursor-pointer items-center font-label-md text-label-md text-secondary transition-colors hover:text-primary"
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
-      {/* Trailing icons */}
-      <div className="flex items-center space-x-4 text-on-surface-variant">
-        <button
-          type="button"
-          className="rounded-full p-1 transition-opacity hover:bg-surface-container-highest hover:opacity-80"
-        >
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button
-          type="button"
-          className="rounded-full p-1 transition-opacity hover:bg-surface-container-highest hover:opacity-80"
-        >
-          <span className="material-symbols-outlined">account_circle</span>
-        </button>
-      </div>
-    </header>
-  );
-}
-
-function ChatStart() {
-  return (
-    <div className="flex min-h-screen bg-background font-body-md text-on-background antialiased">
-      <SideNavBar />
-
-      <main className="ml-0 flex min-h-screen flex-1 flex-col bg-surface lg:ml-72">
-        <TopAppBar />
-
-        {/* Central chat interface */}
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center p-8">
-          {/* Greeting */}
-          <div className="mb-12 animate-fade-in-up text-center">
-            <h1 className="mb-4 font-headline-lg text-headline-lg tracking-tight text-primary">
-              무엇을 도와드릴까요?
-            </h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant">
-              정확한 건강 인사이트와 AI 기반의 맞춤형 조언을 제공합니다.
-            </p>
-          </div>
-
-          {/* Main input area */}
-          <div className="group relative mb-16 w-full max-w-3xl">
-            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-outline-variant to-outline-variant opacity-20 blur transition duration-500 group-hover:opacity-40" />
-            <div className="relative flex items-center rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm transition-all duration-200 hover:border-primary focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10">
-              <button
-                type="button"
-                className="pl-5 pr-3 text-on-surface-variant transition-colors hover:text-primary"
-              >
-                <span className="material-symbols-outlined text-[28px]">mic</span>
-              </button>
-              <input
-                type="text"
-                placeholder="건강에 대해 무엇이든 물어보세요..."
-                className="flex-1 border-none bg-transparent px-2 py-5 font-body-lg text-body-lg text-on-surface outline-none placeholder:text-on-surface-variant/60 focus:ring-0"
-              />
-              <button
-                type="button"
-                className="mr-3 flex items-center justify-center rounded-lg bg-primary p-3 text-on-primary transition-colors hover:bg-inverse-surface"
-              >
-                <span className="material-symbols-outlined">send</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick action cards */}
-          <div className="w-full max-w-3xl">
-            <p className="mb-4 text-center font-label-md text-label-md uppercase tracking-widest text-on-surface-variant">
-              추천 질문
-            </p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {SUGGESTIONS.map(({ icon, title, desc }) => (
-                <button
-                  key={title}
-                  type="button"
-                  className="group flex items-start rounded-lg border border-outline-variant bg-surface-container-lowest p-5 text-left transition-all duration-200 hover:border-primary hover:shadow-md"
-                >
-                  <div className="mr-4 rounded-md bg-surface-container-low p-2 transition-colors group-hover:bg-primary/5">
-                    <span className="material-symbols-outlined text-primary">{icon}</span>
-                  </div>
-                  <div>
-                    <h3 className="mb-1 font-body-md text-body-md font-semibold text-on-surface">
-                      {title}
-                    </h3>
-                    <p className="line-clamp-2 font-body-sm text-body-sm text-on-surface-variant">
-                      {desc}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
+      <span className={`mt-1 tracking-[0.2em] ${sub}`}
+        style={{ ...mono, fontSize: dark ? 7 : 10 }}>APEXAI</span>
     </div>
   );
 }
 
-export default ChatStart;
+/* ─── 막대 그래프 ─── */
+function BarGraph() {
+  const maxBarPx = 60; // 높이에 맞춰 조정
+  return (
+    <div className="flex-1 border border-[#b7bac4] h-[90px] flex flex-col px-[3px] pt-[5px] pb-0 overflow-hidden">
+      {/* 수평 가이드라인 */}
+      <div className="relative flex-1">
+        {[0, 33, 66, 100].map(pct => (
+          <div
+            key={pct}
+            className="absolute w-full bg-[#d9d9d9]"
+            style={{ height: 1, top: `${pct}%` }}
+          />
+        ))}
+        {/* 막대 */}
+        <div className="absolute inset-0 flex items-end gap-[2px]">
+          {BAR_HEIGHTS.map((h, i) => (
+            <div key={i} className="flex-1 flex justify-center items-end h-full">
+              <div
+                className="bg-[#4b4e59]"
+                style={{ width: 10, height: Math.round(h * maxBarPx / 100) }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* 날짜 행 */}
+      <div className="flex gap-[2px] shrink-0" style={{ height: 9 }}>
+        {DATES.map((d, i) => (
+          <div key={i} className="flex-1 flex justify-center">
+            <span style={{ fontSize: 4.5, color: '#b7bac4', lineHeight: '9px', whiteSpace: 'nowrap' }}>
+              {d}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── 인바디 한 행 ─── */
+function InbodyRow({ label, value }) {
+  return (
+    <div className="flex gap-3 items-center">
+      <div className="bg-[#161415] flex flex-col items-center justify-center gap-2 py-2 h-[90px] w-[130px] shrink-0">
+        <span style={{ ...mono, fontSize: 10, fontWeight: 700, color: '#b7bac4', textAlign: 'center', padding: '0 6px' }}>
+          {label}
+        </span>
+        <span style={{ ...mono, fontSize: 18, fontWeight: 700, color: '#fff' }}>{value}</span>
+        <div className="border border-[#b7bac4] rounded-full px-3 py-0.5">
+          <span style={{ ...mono, fontSize: 9, fontWeight: 700, color: '#fff' }}>표준</span>
+        </div>
+      </div>
+      <BarGraph />
+      <div className="flex flex-col justify-around w-8 shrink-0" style={{ height: 90 }}>
+        {['68.0','66.0','64.0','62.0','60.0'].map(v => (
+          <span key={v} className="text-right block" style={{ ...mono, fontSize: 6, color: '#b7bac4' }}>{v}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── 좌측 사이드바 ─── */
+function Sidebar({ navigate }) {
+  const navItems = [
+    { img: imgIconHistory, label: '최근 채팅내역', to: '/history'  },
+    { img: imgIconData,    label: '종합 데이터',   to: '/insights' },
+    { img: imgIconProfile, label: '개인 프로필',   to: '/settings' },
+    { img: imgIconSet,     label: '정보 설정',     to: '/settings' },
+  ];
+  return (
+    <aside className="w-[375px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] flex flex-col relative">
+      {/* 로고 */}
+      <div className="flex justify-center pt-[50px] pb-4">
+        <ApexLogo />
+      </div>
+
+      {/* 새 채팅시작 */}
+      <div className="px-[113px] mt-4">
+        <button
+          className="w-full flex items-center justify-center gap-[15px] bg-[#161415]
+                     border border-[#b7bac4] h-[55px]
+                     shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
+                     hover:opacity-80 transition-opacity"
+          style={{ ...mono, fontSize: 13, color: '#fff' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chat</span>
+          새 채팅시작
+        </button>
+      </div>
+
+      {/* 다용도 버튼 — Figma 아이콘 그대로 */}
+      <nav className="px-[113px] mt-[55px] flex flex-col gap-[15px]">
+        {navItems.map(({ img, label, to }) => (
+          <button
+            key={label}
+            onClick={() => navigate(to)}
+            className="flex flex-wrap items-center justify-center bg-[#f7f7f7]
+                       border border-[rgba(183,186,196,0.45)] h-[40px] w-full
+                       shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
+                       overflow-hidden hover:bg-[#efefef] transition-colors px-[20px]"
+            style={{ gap: '13px' }}
+          >
+            <img src={img} alt="" className="w-[16px] h-[16px] object-contain shrink-0" />
+            <span style={{ ...mono, fontSize: 13, color: '#000' }}>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* 로그아웃 — Figma 아이콘 */}
+      <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+        <button
+          className="flex items-center gap-1 hover:opacity-70 transition-opacity"
+          style={{ ...mono, fontSize: 12, color: '#ff1c1e' }}
+        >
+          <img src={imgIconLogout} alt="" className="w-[14px] h-[14px] object-contain" />
+          로그아웃
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/* ─── 우측 AI 패널 ─── */
+function AiButtonPanel() {
+  const items = [
+    { label: '코칭AI', icon: 'psychology'    },
+    { label: '영양AI', icon: 'restaurant'    },
+    { label: '운동AI', icon: 'fitness_center'},
+  ];
+  return (
+    <div className="w-[50px] shrink-0 flex flex-col gap-[15px]">
+      {items.map(({ label, icon }) => (
+        <button
+          key={label}
+          className="bg-[#f7f7f7] flex flex-col items-center justify-center gap-[10px]
+                     h-[186px] w-full drop-shadow-[0px_4px_2px_rgba(0,0,0,0.25)]
+                     hover:bg-[#efefef] transition-colors"
+        >
+          <span className="material-symbols-outlined text-[#161415]" style={{ fontSize: 20 }}>{icon}</span>
+          <span className="text-[#161415] font-bold"
+            style={{ ...mono, fontSize: 13, writingMode: 'vertical-rl' }}>
+            {label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── 메인 화면 ─── */
+export default function ChatStart() {
+  const navigate = useNavigate();
+  const [input, setInput] = useState('');
+
+  return (
+    <div className="page-chat flex h-screen bg-white overflow-hidden" style={{ minWidth: 1100 }}>
+      <Sidebar navigate={navigate} />
+
+      {/* 오른쪽 전체 영역 */}
+      <div className="flex-1 flex overflow-hidden pt-[93px]">
+
+        {/* 스크롤 가능한 콘텐츠 */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* 콘텐츠를 가로 중앙 정렬 */}
+          <div className="flex flex-col items-center w-full px-8">
+            <div className="w-full max-w-[799px] flex flex-col">
+
+              {/* ── 인사말 (중앙 정렬) ── */}
+              <div className="flex flex-col items-center text-center gap-[25px]">
+                <h1 className="font-bold text-black leading-tight"
+                  style={{ ...mono, fontSize: 45 }}>
+                  ooo님 반갑습니다.
+                </h1>
+                <p className="text-black"
+                  style={{ ...mono, fontSize: 25 }}>
+                  지난 루틴을 기반하여 오늘은 상체 하시는 날입니다.
+                </p>
+              </div>
+
+              {/* ── 추천 반응형 버튼 ── */}
+              <div className="flex gap-[25px] flex-wrap items-center mt-[15px] overflow-hidden"
+                style={{ maxHeight: 36 }}>
+                {CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    className="flex items-center justify-center gap-[15px] bg-[#f7f7f7]
+                               border border-[rgba(183,186,196,0.45)] h-[36px] px-[20px]
+                               shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
+                               hover:bg-[#efefef] transition-colors shrink-0"
+                    style={{ ...mono, fontSize: 13, color: '#000' }}
+                  >
+                    {chip}
+                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>close</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* ── 채팅 입력창 ── */}
+              <div className="flex items-center bg-[#f7f7f7] mt-[15px]"
+                style={{ border: '5px solid #161415', height: 60 }}>
+                <div className="flex-1 flex items-center px-2 overflow-hidden h-full">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="오늘의 루틴을 말씀해 주세요."
+                    className="w-full bg-transparent text-[#161415] outline-none
+                               placeholder-[#161415]/40 overflow-hidden text-ellipsis px-2"
+                    style={{ ...mono, fontSize: 15 }}
+                  />
+                </div>
+                <button
+                  className="w-[60px] h-full flex items-center justify-center shrink-0
+                             bg-[#f7f7f7] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
+                             hover:opacity-70 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-[#161415]" style={{ fontSize: 22 }}>send</span>
+                </button>
+              </div>
+
+              {/* ── 운동 종류 버튼 ── */}
+              <div className="grid grid-cols-3 gap-[85px] mt-[25px]">
+                {WORKOUT_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    className="bg-[#161415] flex items-center justify-center gap-[20px]
+                               h-[50px] p-[10px] hover:opacity-80 transition-opacity"
+                  >
+                    <span className="material-symbols-outlined text-white" style={{ fontSize: 22 }}>
+                      fitness_center
+                    </span>
+                    <span className="text-white font-bold" style={{ ...mono, fontSize: 14 }}>{type}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* ── My Recent Inbody Data ── */}
+              <div className="mt-[80px] pb-8">
+                {/* 헤더 */}
+                <div className="flex items-baseline gap-[13px] mb-2">
+                  <span className="font-bold text-black" style={{ ...mono, fontSize: 20 }}>
+                    My Recent Inbody Data
+                  </span>
+                  <span className="text-black" style={{ ...mono, fontSize: 12 }}>
+                    Last Data 2026.06.20
+                  </span>
+                </div>
+
+                {/* 테두리 박스 */}
+                <div className="border border-[#b7bac4] px-[14px] py-[9px] flex items-end gap-4">
+                  {/* 프로필 카드 */}
+                  <div className="bg-[#161415] px-[13px] pt-[15px] pb-[13px] w-[182px] shrink-0
+                                  flex flex-col gap-[11px]" style={{ minHeight: 215 }}>
+                    <span style={{ ...mono, fontSize: 12, color: '#fff' }}>My Profile</span>
+                    {PROFILE_LINES.map((line) => (
+                      <span key={line} className="font-bold" style={{ ...mono, fontSize: 12, color: '#fff' }}>
+                        {line}
+                      </span>
+                    ))}
+                    <span className="text-center mt-auto" style={{ ...mono, fontSize: 8, color: '#fff' }}>
+                      APEX AI
+                    </span>
+                  </div>
+
+                  {/* 3개 그래프 */}
+                  <div className="flex-1 flex flex-col gap-4">
+                    {INBODY_ROWS.map((row) => (
+                      <InbodyRow key={row.label} label={row.label} value={row.value} />
+                    ))}
+                  </div>
+
+                  {/* APEXAI 로고 카드 */}
+                  <div className="bg-[#161415] w-[80px] shrink-0 flex flex-col items-center
+                                  justify-end pb-4" style={{ minHeight: 217 }}>
+                    <ApexLogo dark />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* AI 버튼 패널 */}
+        <AiButtonPanel />
+      </div>
+    </div>
+  );
+}
