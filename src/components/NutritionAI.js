@@ -186,13 +186,13 @@ export default function NutritionAI() {
                 <p className="mt-4" style={{ ...mono, fontSize: 13, color: '#e2231a' }}>{error}</p>
               )}
 
-              {/* 식단표 제작 / 수정 — 백엔드 엔드포인트 미확정 (api.md 5장) */}
+              {/* 식단표 제작 / 수정 — 수정 버튼은 백엔드 엔드포인트 미확정 (api.md 5장) */}
               <div className="flex items-center gap-6 mt-6 flex-wrap">
                 <button
                   type="button"
-                  disabled
-                  title="아직 지원되지 않는 기능입니다."
-                  className="border border-[#b7bac4] bg-white h-[42px] px-6 opacity-40 cursor-not-allowed"
+                  onClick={() => sendMessage('7일 식단 짜줘')}
+                  disabled={sending || loading}
+                  className="border border-[#b7bac4] bg-white h-[42px] px-6 hover:bg-[#f7f7f7] transition-colors disabled:opacity-40"
                   style={{ ...mono, fontSize: 14, color: '#161415', fontWeight: 700 }}
                 >
                   7일 식단표 제작
