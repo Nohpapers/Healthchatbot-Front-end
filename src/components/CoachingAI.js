@@ -123,7 +123,8 @@ export default function CoachingAI() {
         type: CHAT_TYPE.COACHING,
         message,
         sessionId,
-        settings: settingsOverride ?? toSettings({ upperBody, lowerBody, duration }),
+        // [프리셋 적용] 버튼을 눌렀을 때만 settings를 전송하고, 일반 메시지는 null로 보낸다.
+        settings: settingsOverride ?? null,
       });
       setMessages((prev) => [...prev, { role: 'ASSISTANT', content: res.reply, result: res.result }]);
       if (!sessionId) setSearchParams({ sessionId: res.sessionId }, { replace: true });
