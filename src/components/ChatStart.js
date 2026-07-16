@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import Sidebar from './Sidebar';
+import AiPanel from './AiPanel';
 
 const mono = { fontFamily: "'Anonymous Pro', monospace" };
-
-/* ─── Figma 아이콘 에셋 URL ─── */
-const imgIconHistory = 'https://www.figma.com/api/mcp/asset/90a8cf4c-6e6c-466f-8254-ed6a462e2802';
-const imgIconData    = 'https://www.figma.com/api/mcp/asset/8348fd0f-e324-4ef8-958e-848f6da7d5f9';
-const imgIconProfile = 'https://www.figma.com/api/mcp/asset/1e2296fb-0b08-4f0e-9e11-2ef89d24af66';
-const imgIconSet     = 'https://www.figma.com/api/mcp/asset/ca181880-f5c9-4613-b9f5-131e03beb3e2';
-const imgIconLogout  = 'https://www.figma.com/api/mcp/asset/cc3778f0-722f-4175-8682-5ac385b859a9';
 
 const CHIPS = ['식사량 추천', '운동 추천', '건강루틴 추천', '러닝 루틴'];
 const WORKOUT_TYPES = ['상체', '하체', '유산소'];
@@ -89,108 +83,19 @@ function InbodyRow({ label, value }) {
   );
 }
 
-/* ─── 좌측 사이드바 ─── */
-function Sidebar({ navigate }) {
-  const navItems = [
-    { img: imgIconHistory, label: '최근 채팅내역', to: '/history'  },
-    { img: imgIconData,    label: '종합 데이터',   to: '/insights' },
-    { img: imgIconProfile, label: '개인 프로필',   to: '/settings' },
-    { img: imgIconSet,     label: '정보 설정',     to: '/settings' },
-  ];
-  return (
-    <aside className="w-[375px] shrink-0 h-screen bg-white border-r border-[#e5e7eb] flex flex-col relative">
-      {/* 로고 */}
-      <div className="flex justify-center pt-[50px] pb-4">
-        <ApexLogo />
-      </div>
-
-      {/* 새 채팅시작 */}
-      <div className="px-[113px] mt-4">
-        <button
-          className="w-full flex items-center justify-center gap-[15px] bg-[#161415]
-                     border border-[#b7bac4] h-[55px]
-                     shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
-                     hover:opacity-80 transition-opacity"
-          style={{ ...mono, fontSize: 13, color: '#fff' }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chat</span>
-          새 채팅시작
-        </button>
-      </div>
-
-      {/* 다용도 버튼 — Figma 아이콘 그대로 */}
-      <nav className="px-[113px] mt-[55px] flex flex-col gap-[15px]">
-        {navItems.map(({ img, label, to }) => (
-          <button
-            key={label}
-            onClick={() => navigate(to)}
-            className="flex flex-wrap items-center justify-center bg-[#f7f7f7]
-                       border border-[rgba(183,186,196,0.45)] h-[40px] w-full
-                       shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
-                       overflow-hidden hover:bg-[#efefef] transition-colors px-[20px]"
-            style={{ gap: '13px' }}
-          >
-            <img src={img} alt="" className="w-[16px] h-[16px] object-contain shrink-0" />
-            <span style={{ ...mono, fontSize: 13, color: '#000' }}>{label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* 로그아웃 — Figma 아이콘 */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-        <button
-          className="flex items-center gap-1 hover:opacity-70 transition-opacity"
-          style={{ ...mono, fontSize: 12, color: '#ff1c1e' }}
-        >
-          <img src={imgIconLogout} alt="" className="w-[14px] h-[14px] object-contain" />
-          로그아웃
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-/* ─── 우측 AI 패널 ─── */
-function AiButtonPanel() {
-  const items = [
-    { label: '코칭AI', icon: 'psychology'    },
-    { label: '영양AI', icon: 'restaurant'    },
-    { label: '운동AI', icon: 'fitness_center'},
-  ];
-  return (
-    <div className="w-[50px] shrink-0 flex flex-col gap-[15px]">
-      {items.map(({ label, icon }) => (
-        <button
-          key={label}
-          className="bg-[#f7f7f7] flex flex-col items-center justify-center gap-[10px]
-                     h-[186px] w-full drop-shadow-[0px_4px_2px_rgba(0,0,0,0.25)]
-                     hover:bg-[#efefef] transition-colors"
-        >
-          <span className="material-symbols-outlined text-[#161415]" style={{ fontSize: 20 }}>{icon}</span>
-          <span className="text-[#161415] font-bold"
-            style={{ ...mono, fontSize: 13, writingMode: 'vertical-rl' }}>
-            {label}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ─── 메인 화면 ─── */
 export default function ChatStart() {
-  const navigate = useNavigate();
   const [input, setInput] = useState('');
 
   return (
     <div className="page-chat flex h-screen bg-white overflow-hidden" style={{ minWidth: 1100 }}>
-      <Sidebar navigate={navigate} />
+      <Sidebar />
 
       {/* 오른쪽 전체 영역 */}
-      <div className="flex-1 flex overflow-hidden pt-[93px]">
+      <div className="flex-1 flex overflow-hidden">
 
         {/* 스크롤 가능한 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[93px]">
           {/* 콘텐츠를 가로 중앙 정렬 */}
           <div className="flex flex-col items-center w-full px-8">
             <div className="w-full max-w-[799px] flex flex-col">
@@ -312,7 +217,7 @@ export default function ChatStart() {
         </div>
 
         {/* AI 버튼 패널 */}
-        <AiButtonPanel />
+        <AiPanel />
       </div>
     </div>
   );
