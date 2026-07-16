@@ -4,13 +4,10 @@ import Sidebar from './Sidebar';
 import AiPanel from './AiPanel';
 import PresetDropdown from './PresetDropdown';
 import { getInbodyRecent, postChat, ApiError } from '../api/client';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
-
-const UPPER_BODY_OPTIONS = ['이두·삼두', '가슴운동', '등 운동', '어깨운동', '코어 운동'];
-const LOWER_BODY_OPTIONS = ['엉덩이', '허벅지', '종아리'];
-const TIME_OPTIONS = ['30분', '60분', '90분', '120분', '150분', '180분'];
-const DURATION_MINUTES = { '30분': 30, '60분': 60, '90분': 90, '120분': 120, '150분': 150, '180분': 180 };
+import {
+  mono, UPPER_BODY_OPTIONS, LOWER_BODY_OPTIONS, TIME_OPTIONS,
+  CHAT_TYPE, buildPresetMessage, toSettings,
+} from '../constants';
 
 const BAR_HEIGHTS = [40, 65, 35, 70, 45, 55, 28];
 
@@ -109,7 +106,7 @@ export default function ChatStart() {
     // 바꿔버리면 유일한 응답까지 버려지므로, 여기서는 cancelled를 확인하지 않는다.)
     if (!greetingRequestedRef.current) {
       greetingRequestedRef.current = true;
-      postChat({ type: 'COACHING', message: null, sessionId: null, settings: null })
+      postChat({ type: CHAT_TYPE.COACHING, message: null, sessionId: null, settings: null })
         .then((res) => {
           setSessionId(res.sessionId);
           setGreeting(splitGreeting(res.reply));
@@ -140,14 +137,10 @@ export default function ChatStart() {
     setSending(true);
     try {
       const res = await postChat({
-        type: 'COACHING',
+        type: CHAT_TYPE.COACHING,
         message,
         sessionId,
-        settings: {
-          upperBody,
-          lowerBody,
-          durationMinutes: duration ? DURATION_MINUTES[duration] : null,
-        },
+        settings: toSettings({ upperBody, lowerBody, duration }),
       });
       navigate(`/coaching?sessionId=${res.sessionId}`);
     } catch (err) {
@@ -165,12 +158,7 @@ export default function ChatStart() {
   /** [프리셋 적용] — 선택한 프리셋 전체를 백엔드로 보내고 코칭 AI 화면으로 이동 (CoachingAI와 동일한 문구) */
   function applyPresets() {
     if (sending || greetingLoading || !hasPreset) return;
-
-    const parts = [];
-    if (upperBody) parts.push(`상체운동은 ${upperBody}`);
-    if (lowerBody) parts.push(`하체운동은 ${lowerBody}`);
-    if (duration) parts.push(`운동시간은 ${duration}`);
-    sendAndGoToCoaching(`${parts.join(', ')}(으)로 설정했어. 이 설정에 맞는 운동루틴을 추천해줘.`);
+    sendAndGoToCoaching(buildPresetMessage({ upperBody, lowerBody, duration }));
   }
 
   const inbodyRows = inbody

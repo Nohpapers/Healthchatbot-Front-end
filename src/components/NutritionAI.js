@@ -4,11 +4,7 @@ import Sidebar from './Sidebar';
 import AiPanel from './AiPanel';
 import { AiAvatar, MessageBubble, UserBubble, TypingBubble } from './AiChatWidgets';
 import { postChat, getChatSessionDetail, ApiError } from '../api/client';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
-
-const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-const SLOTS = ['BREAKFAST', 'LUNCH', 'DINNER'];
+import { mono, DAYS, MEAL_SLOTS, CHAT_TYPE } from '../constants';
 
 /* ─── 식단표 카드 ─── */
 function MealPlanCard({ mealPlan }) {
@@ -35,7 +31,7 @@ function MealPlanCard({ mealPlan }) {
                 >
                   {day}
                 </div>
-                {SLOTS.map((slot) => {
+                {MEAL_SLOTS.map((slot) => {
                   const meal = mealBySlot[slot];
                   return (
                     <div
@@ -113,7 +109,7 @@ export default function NutritionAI() {
       // 바꿔버리면 유일한 응답까지 버려지므로, 여기서는 cancelled를 확인하지 않는다.)
       greetingRequestedRef.current = true;
 
-      postChat({ type: 'NUTRITION', message: null, sessionId: null, settings: null })
+      postChat({ type: CHAT_TYPE.NUTRITION, message: null, sessionId: null, settings: null })
         .then((res) => {
           setMessages([{ role: 'ASSISTANT', content: res.reply, result: res.result }]);
           setSearchParams({ sessionId: res.sessionId }, { replace: true });
@@ -140,7 +136,7 @@ export default function NutritionAI() {
     setInput('');
 
     try {
-      const res = await postChat({ type: 'NUTRITION', message, sessionId, settings: null });
+      const res = await postChat({ type: CHAT_TYPE.NUTRITION, message, sessionId, settings: null });
       setMessages((prev) => [...prev, { role: 'ASSISTANT', content: res.reply, result: res.result }]);
       if (!sessionId) setSearchParams({ sessionId: res.sessionId }, { replace: true });
     } catch (err) {

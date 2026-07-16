@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
+import { mono } from '../constants';
 
 export default function PresetDropdown({ label, options, width = 210, value, onChange }) {
   const [open, setOpen] = useState(false);

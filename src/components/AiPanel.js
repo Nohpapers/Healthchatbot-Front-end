@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
+import { mono } from '../constants';
 
 const ITEMS = [
   { label: '코칭 A I', icon: 'psychology', to: '/coaching' },

@@ -5,13 +5,10 @@ import AiPanel from './AiPanel';
 import PresetDropdown from './PresetDropdown';
 import { AiAvatar, MessageBubble, UserBubble, TypingBubble } from './AiChatWidgets';
 import { postChat, getChatSessionDetail, ApiError } from '../api/client';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
-
-const UPPER_BODY_OPTIONS = ['이두·삼두', '가슴운동', '등 운동', '어깨운동', '코어 운동'];
-const LOWER_BODY_OPTIONS = ['엉덩이', '허벅지', '종아리'];
-const TIME_OPTIONS = ['30분', '60분', '90분', '120분', '150분', '180분'];
-const DURATION_MINUTES = { '30분': 30, '60분': 60, '90분': 90, '120분': 120, '150분': 150, '180분': 180 };
+import {
+  mono, UPPER_BODY_OPTIONS, LOWER_BODY_OPTIONS, TIME_OPTIONS,
+  CHAT_TYPE, buildPresetMessage, toSettings,
+} from '../constants';
 
 /* ─── 운동루틴 카드 ─── */
 function RoutineCard({ routine }) {
@@ -95,7 +92,7 @@ export default function CoachingAI() {
       // 바꿔버리면 유일한 응답까지 버려지므로, 여기서는 cancelled를 확인하지 않는다.)
       greetingRequestedRef.current = true;
 
-      postChat({ type: 'COACHING', message: null, sessionId: null, settings: null })
+      postChat({ type: CHAT_TYPE.COACHING, message: null, sessionId: null, settings: null })
         .then((res) => {
           setMessages([{ role: 'ASSISTANT', content: res.reply, result: res.result }]);
           setSearchParams({ sessionId: res.sessionId }, { replace: true });
@@ -123,15 +120,10 @@ export default function CoachingAI() {
 
     try {
       const res = await postChat({
-        type: 'COACHING',
+        type: CHAT_TYPE.COACHING,
         message,
         sessionId,
-        // 프리셋 클릭 직후엔 state 반영 전이므로 호출부가 최신 설정을 직접 넘긴다
-        settings: settingsOverride ?? {
-          upperBody,
-          lowerBody,
-          durationMinutes: duration ? DURATION_MINUTES[duration] : null,
-        },
+        settings: settingsOverride ?? toSettings({ upperBody, lowerBody, duration }),
       });
       setMessages((prev) => [...prev, { role: 'ASSISTANT', content: res.reply, result: res.result }]);
       if (!sessionId) setSearchParams({ sessionId: res.sessionId }, { replace: true });
@@ -147,18 +139,8 @@ export default function CoachingAI() {
   /** [프리셋 적용] 클릭 시 선택해둔 프리셋 전체를 백엔드로 전송 (별도 설정 API가 없어 /api/chat의 settings로 전달) */
   function applyPresets() {
     if (sending || loading || !hasPreset) return;
-
-    const parts = [];
-    if (upperBody) parts.push(`상체운동은 ${upperBody}`);
-    if (lowerBody) parts.push(`하체운동은 ${lowerBody}`);
-    if (duration) parts.push(`운동시간은 ${duration}`);
-    const message = `${parts.join(', ')}(으)로 설정했어. 이 설정에 맞는 운동루틴을 추천해줘.`;
-
-    sendMessage(message, {
-      upperBody,
-      lowerBody,
-      durationMinutes: duration ? DURATION_MINUTES[duration] : null,
-    });
+    const preset = { upperBody, lowerBody, duration };
+    sendMessage(buildPresetMessage(preset), toSettings(preset));
   }
 
   return (

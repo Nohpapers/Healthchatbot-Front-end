@@ -4,7 +4,7 @@
 //  - 로컬 개발(npm start): package.json의 "proxy"
 //  - Vercel 배포: vercel.json의 rewrites (/api/* → Railway)
 // 다른 환경에서 백엔드를 직접 가리켜야 하면 REACT_APP_API_BASE_URL로 덮어쓴다.
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
+const BASE_URL = 'https://healthcarebelee-production.up.railway.app/api';
 
 /** RFC 7807 ProblemDetail을 그대로 담는 에러 */
 export class ApiError extends Error {

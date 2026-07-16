@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getChatSessions, ApiError } from '../api/client';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
+import { mono, CHAT_TYPE } from '../constants';
 
 function typeFromPath(pathname) {
-  if (pathname.startsWith('/nutrition')) return 'NUTRITION';
-  return 'COACHING';
+  if (pathname.startsWith('/nutrition')) return CHAT_TYPE.NUTRITION;
+  return CHAT_TYPE.COACHING;
 }
 
 function formatDateTime(iso) {
@@ -41,7 +40,7 @@ export default function Sidebar() {
   }, [historyOpen, type]);
 
   function goToSession(sessionId) {
-    const path = type === 'NUTRITION' ? '/nutrition' : '/coaching';
+    const path = type === CHAT_TYPE.NUTRITION ? '/nutrition' : '/coaching';
     navigate(`${path}?sessionId=${sessionId}`);
   }
 

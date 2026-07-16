@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiBaseUrl, rawRequest } from '../api/client';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
+import { mono } from '../constants';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 

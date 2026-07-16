@@ -1,6 +1,5 @@
 import React from 'react';
-
-const mono = { fontFamily: "'Anonymous Pro', monospace" };
+import { mono } from '../constants';
 
 /* ─── AI 아바타 (코칭/영양 공용) ─── */
 export function AiAvatar({ icon, tag }) {
