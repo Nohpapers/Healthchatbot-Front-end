@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders the HealthAI brand name', () => {
+test('renders the login page logo', () => {
   render(<App />);
-  const heading = screen.getByText(/HealthAI/i);
-  expect(heading).toBeInTheDocument();
+  const logo = screen.getByAltText(/APEXAI/i);
+  expect(logo).toBeInTheDocument();
 });
