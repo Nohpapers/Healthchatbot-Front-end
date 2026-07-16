@@ -1,11 +1,10 @@
 /* API 클라이언트 — api.md 단일 출처 기준 (MVP: 인증 없음, 고정 더미 유저 1명) */
 
-// 로컬 개발(npm start)에서는 package.json의 "proxy"를 통해 상대경로로 우회 호출한다
-// (백엔드에 CORS가 아직 설정되지 않아, 배포된 빌드에서는 REACT_APP_API_BASE_URL로
-// 실제 도메인을 지정하거나 배포 플랫폼의 리라이트/프록시로 우회해야 한다)
-const BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  (process.env.NODE_ENV === 'development' ? '/api' : 'https://healthcarebelee-production.up.railway.app/api');
+// 백엔드에 CORS가 없어 항상 같은 오리진의 상대경로로 호출하고, 프록시가 대신 전달한다:
+//  - 로컬 개발(npm start): package.json의 "proxy"
+//  - Vercel 배포: vercel.json의 rewrites (/api/* → Railway)
+// 다른 환경에서 백엔드를 직접 가리켜야 하면 REACT_APP_API_BASE_URL로 덮어쓴다.
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
 
 /** RFC 7807 ProblemDetail을 그대로 담는 에러 */
 export class ApiError extends Error {
