@@ -124,7 +124,7 @@ export default function CoachingAI() {
         message,
         sessionId,
         // [프리셋 적용] 버튼을 눌렀을 때만 settings를 전송하고, 일반 메시지는 null로 보낸다.
-        settings: settingsOverride ?? null,
+        settings: settingsOverride ?? toSettings({ upperBody: null, lowerBody: null, duration: null }),
       });
       setMessages((prev) => [...prev, { role: 'ASSISTANT', content: res.reply, result: res.result }]);
       if (!sessionId) setSearchParams({ sessionId: res.sessionId }, { replace: true });
