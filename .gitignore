@@ -1,0 +1,31 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 디자인 참고용 이미지 (커밋 제외)
+public/로그인화면.png
+public/메인화면바.png
+public/영양ai화면.png
+public/운동ai화면.png
+public/채팅\ 종합박스.png
+public/코칭ai화면.png
