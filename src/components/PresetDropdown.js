@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const mono = { fontFamily: "'Anonymous Pro', monospace" };
 
-export default function PresetDropdown({ label, options, width = 210 }) {
+export default function PresetDropdown({ label, options, width = 210, value, onChange }) {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const selected = value ?? null;
   const ref = useRef(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function PresetDropdown({ label, options, width = 210 }) {
             <button
               key={opt}
               type="button"
-              onClick={() => { setSelected(opt); setOpen(false); }}
+              onClick={() => { onChange?.(opt); setOpen(false); }}
               className="w-full text-left px-5 py-2 hover:bg-[#f7f7f7] transition-colors"
               style={{ ...mono, fontSize: 14, color: '#6b5b1f', fontWeight: 700 }}
             >

@@ -1,28 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AiPanel from './AiPanel';
 import PresetDropdown from './PresetDropdown';
+import { getInbodyRecent, postChat, ApiError } from '../api/client';
 
 const mono = { fontFamily: "'Anonymous Pro', monospace" };
 
 const UPPER_BODY_OPTIONS = ['이두·삼두', '가슴운동', '등 운동', '어깨운동', '코어 운동'];
 const LOWER_BODY_OPTIONS = ['엉덩이', '허벅지', '종아리'];
+const TIME_OPTIONS = ['30분', '60분', '90분', '120분', '150분', '180분'];
+const DURATION_MINUTES = { '30분': 30, '60분': 60, '90분': 90, '120분': 120, '150분': 150, '180분': 180 };
 
-const INBODY_ROWS = [
-  { label: '체중 (kg)', value: '00.0' },
-  { label: '골격근량(kg)', value: '00.0' },
-  { label: '체지방량 (kg)', value: '00.0' },
-];
-const PROFILE_LINES = [
-  '성명. 000', '성별. 남성', '키. 000cm',
-  '체중. 000kg', '기초대사량. 000kcal',
-  '목표. 0000 증가', '전날 운동. 상체 운동',
-];
 const BAR_HEIGHTS = [40, 65, 35, 70, 45, 55, 28];
-const DATES = ['26.06.20', '26.06.20', '26.06.20', '26.06.20', '26.06.20', '26.06.20', '26.06.20'];
-const SCALE_VALUES = ['55.0', '54.0', '53.0', '52.0', '51.0'];
 
-/* ─── 막대 그래프 ─── */
+function formatDate(dateStr) {
+  return dateStr ? dateStr.replaceAll('-', '.') : '--';
+}
+
+/** AI 인사말 reply를 큰 제목 / 작은 설명 두 줄로 나눈다 (형식은 보장되지 않으므로 첫 문장 기준 분리) */
+function splitGreeting(reply) {
+  if (!reply) return { title: '', subtitle: '' };
+  const idx = reply.indexOf('. ');
+  if (idx === -1) return { title: reply, subtitle: '' };
+  return { title: reply.slice(0, idx + 1), subtitle: reply.slice(idx + 2) };
+}
+
+/* ─── 막대 그래프 (이력 데이터 API가 없어 시각적 참고용) ─── */
 function BarGraph() {
   return (
     <div className="flex-1 relative border border-[#b7bac4] px-1 py-1 h-[88px]">
@@ -35,9 +39,6 @@ function BarGraph() {
         {BAR_HEIGHTS.map((h, i) => (
           <div key={i} className="flex flex-col items-center justify-end h-full">
             <div className="bg-[#4b4e59] w-[10px]" style={{ height: `${h}%` }} />
-            <span style={{ ...mono, fontSize: '5px', color: '#b7bac4', marginTop: 2 }}>
-              {DATES[i]}
-            </span>
           </div>
         ))}
       </div>
@@ -62,18 +63,123 @@ function InbodyRow({ label, value }) {
         </div>
       </div>
       <BarGraph />
-      <div className="flex flex-col justify-between w-8 shrink-0" style={{ height: 88 }}>
-        {SCALE_VALUES.map((v) => (
-          <span key={v} className="text-right block" style={{ ...mono, fontSize: 7, color: '#b7bac4' }}>{v}</span>
-        ))}
-      </div>
+    </div>
+  );
+}
+
+/* ─── 인바디 기록 없음 ─── */
+function NoInbodyData() {
+  return (
+    <div className="border border-[#b7bac4] px-[14px] py-[9px] flex items-center justify-center" style={{ height: 132 }}>
+      <span style={{ ...mono, fontSize: 13, color: '#6b6f76' }}>
+        아직 등록된 인바디 기록이 없습니다.
+      </span>
     </div>
   );
 }
 
 /* ─── 메인 화면 ─── */
 export default function ChatStart() {
+  const navigate = useNavigate();
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const [upperBody, setUpperBody] = useState(null);
+  const [lowerBody, setLowerBody] = useState(null);
+  const [duration, setDuration] = useState(null);
+
+  const [sessionId, setSessionId] = useState(null);
+  const [greeting, setGreeting] = useState({ title: '', subtitle: '' });
+  const [greetingLoading, setGreetingLoading] = useState(true);
+  const [greetingError, setGreetingError] = useState(null);
+
+  const [inbody, setInbody] = useState(null);
+  const [inbodyLoading, setInbodyLoading] = useState(true);
+  const [inbodyError, setInbodyError] = useState(null);
+
+  // React.StrictMode(개발 모드)가 마운트 이펙트를 두 번 실행해서, 이 가드가 없으면
+  // 인사말 요청이 두 번 나가 세션이 중복 생성된다.
+  const greetingRequestedRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // ref로 중복 실행을 막기 때문에 이 요청은 실제로 딱 한 번만 나간다.
+    // (StrictMode의 mount→cleanup→mount 시뮬레이션에서 cleanup이 cancelled를 앞서 true로
+    // 바꿔버리면 유일한 응답까지 버려지므로, 여기서는 cancelled를 확인하지 않는다.)
+    if (!greetingRequestedRef.current) {
+      greetingRequestedRef.current = true;
+      postChat({ type: 'COACHING', message: null, sessionId: null, settings: null })
+        .then((res) => {
+          setSessionId(res.sessionId);
+          setGreeting(splitGreeting(res.reply));
+        })
+        .catch((err) => {
+          setGreetingError(err instanceof ApiError ? err.message : '인사말을 불러오지 못했습니다.');
+          greetingRequestedRef.current = false;
+        })
+        .finally(() => setGreetingLoading(false));
+    }
+
+    getInbodyRecent()
+      .then((data) => !cancelled && setInbody(data))
+      .catch((err) => {
+        if (cancelled) return;
+        setInbodyError(err instanceof ApiError ? err.message : '인바디 데이터를 불러오지 못했습니다.');
+      })
+      .finally(() => !cancelled && setInbodyLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function sendAndGoToCoaching(message) {
+    if (!message || sending) return;
+
+    setSending(true);
+    try {
+      const res = await postChat({
+        type: 'COACHING',
+        message,
+        sessionId,
+        settings: {
+          upperBody,
+          lowerBody,
+          durationMinutes: duration ? DURATION_MINUTES[duration] : null,
+        },
+      });
+      navigate(`/coaching?sessionId=${res.sessionId}`);
+    } catch (err) {
+      setGreetingError(err instanceof ApiError ? err.message : '메시지를 보내지 못했습니다.');
+      setSending(false);
+    }
+  }
+
+  function handleSend() {
+    sendAndGoToCoaching(input.trim());
+  }
+
+  const hasPreset = Boolean(upperBody || lowerBody || duration);
+
+  /** [프리셋 적용] — 선택한 프리셋 전체를 백엔드로 보내고 코칭 AI 화면으로 이동 (CoachingAI와 동일한 문구) */
+  function applyPresets() {
+    if (sending || greetingLoading || !hasPreset) return;
+
+    const parts = [];
+    if (upperBody) parts.push(`상체운동은 ${upperBody}`);
+    if (lowerBody) parts.push(`하체운동은 ${lowerBody}`);
+    if (duration) parts.push(`운동시간은 ${duration}`);
+    sendAndGoToCoaching(`${parts.join(', ')}(으)로 설정했어. 이 설정에 맞는 운동루틴을 추천해줘.`);
+  }
+
+  const inbodyRows = inbody
+    ? [
+        { label: '체중 (kg)', value: inbody.weightKg?.toFixed(1) ?? '--' },
+        { label: '골격근량(kg)', value: inbody.skeletalMuscleMassKg?.toFixed(1) ?? '--' },
+        { label: '체지방량 (kg)', value: inbody.bodyFatMassKg?.toFixed(1) ?? '--' },
+      ]
+    : [];
 
   return (
     <div className="flex h-screen bg-white overflow-hidden" style={{ minWidth: 1100 }}>
@@ -86,12 +192,22 @@ export default function ChatStart() {
 
               {/* 인사말 */}
               <div className="flex flex-col items-center text-center gap-[25px]">
-                <h1 className="font-bold text-black leading-tight" style={{ ...mono, fontSize: 45 }}>
-                  ooo님 반갑습니다.
-                </h1>
-                <p className="text-black" style={{ ...mono, fontSize: 25 }}>
-                  지난 루틴을 기반하여 오늘은 상체 하시는 날입니다.
-                </p>
+                {greetingLoading ? (
+                  <p style={{ ...mono, fontSize: 20, color: '#6b6f76' }}>불러오는 중...</p>
+                ) : greetingError ? (
+                  <p style={{ ...mono, fontSize: 15, color: '#e2231a' }}>{greetingError}</p>
+                ) : (
+                  <>
+                    <h1 className="font-bold text-black leading-tight" style={{ ...mono, fontSize: 45 }}>
+                      {greeting.title}
+                    </h1>
+                    {greeting.subtitle && (
+                      <p className="text-black" style={{ ...mono, fontSize: 25 }}>
+                        {greeting.subtitle}
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* 채팅 입력창 */}
@@ -100,24 +216,41 @@ export default function ChatStart() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="오늘의 루틴을 말씀해 주세요."
+                  disabled={sending}
                   className="flex-1 h-full bg-transparent text-[#161415] outline-none px-4 placeholder-[#161415]/40"
                   style={{ ...mono, fontSize: 15 }}
                 />
                 <button
+                  onClick={handleSend}
+                  disabled={sending}
                   className="w-[52px] h-full flex items-center justify-center shrink-0 border-l-2 border-[#161415]
-                             hover:bg-[#f7f7f7] transition-colors"
+                             hover:bg-[#f7f7f7] transition-colors disabled:opacity-40"
                 >
                   <span className="material-symbols-outlined text-[#161415]" style={{ fontSize: 20 }}>send</span>
                 </button>
               </div>
 
-              {/* 운동 부위 프리셋 + 초기화 */}
-              <div className="flex items-center gap-6 mt-[20px]">
-                <PresetDropdown label="상체운동설정" options={UPPER_BODY_OPTIONS} />
-                <PresetDropdown label="하체운동설정" options={LOWER_BODY_OPTIONS} />
+              {/* 운동 부위 / 시간 프리셋 + 적용 + 초기화 (CoachingAI와 동일 구성) */}
+              <div className="flex items-center gap-6 mt-[20px] flex-wrap">
+                <PresetDropdown label="상체운동설정" options={UPPER_BODY_OPTIONS} width={200} value={upperBody} onChange={setUpperBody} />
+                <PresetDropdown label="하체운동설정" options={LOWER_BODY_OPTIONS} width={190} value={lowerBody} onChange={setLowerBody} />
+                <PresetDropdown label="시간설정" options={TIME_OPTIONS} width={160} value={duration} onChange={setDuration} />
                 <button
                   type="button"
+                  onClick={applyPresets}
+                  disabled={sending || greetingLoading || !hasPreset}
+                  className="border-2 border-[#161415] bg-white text-[#161415] h-[42px] px-5
+                             hover:bg-[#161415] hover:text-white transition-colors
+                             disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-[#161415]"
+                  style={{ ...mono, fontSize: 13, fontWeight: 700 }}
+                >
+                  프리셋 적용
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setUpperBody(null); setLowerBody(null); setDuration(null); }}
                   className="ml-auto bg-[#161415] text-white h-[42px] px-5 hover:opacity-80 transition-opacity"
                   style={{ ...mono, fontSize: 13, fontWeight: 700 }}
                 >
@@ -131,39 +264,54 @@ export default function ChatStart() {
                   <span className="font-bold text-black" style={{ ...mono, fontSize: 20 }}>
                     My Recent Inbody Data
                   </span>
-                  <span className="text-black" style={{ ...mono, fontSize: 12 }}>
-                    Last Data 2026.06.20
-                  </span>
-                </div>
-
-                <div className="border border-[#b7bac4] px-[14px] py-[9px] flex items-stretch gap-4">
-                  <div className="bg-[#161415] px-[13px] pt-[15px] pb-[13px] w-[182px] shrink-0
-                                  flex flex-col gap-[11px]">
-                    <span style={{ ...mono, fontSize: 12, color: '#fff' }}>My Profile</span>
-                    {PROFILE_LINES.map((line) => (
-                      <span key={line} className="font-bold" style={{ ...mono, fontSize: 12, color: '#fff' }}>
-                        {line}
-                      </span>
-                    ))}
-                    <span className="text-center mt-auto" style={{ ...mono, fontSize: 8, color: '#fff' }}>
-                      APEX AI
+                  {inbody && (
+                    <span className="text-black" style={{ ...mono, fontSize: 12 }}>
+                      Last Data {formatDate(inbody.measuredAt)}
                     </span>
-                  </div>
-
-                  <div className="flex-1 flex flex-col gap-4 justify-between">
-                    {INBODY_ROWS.map((row) => (
-                      <InbodyRow key={row.label} label={row.label} value={row.value} />
-                    ))}
-                  </div>
-
-                  <div className="bg-[#161415] w-[80px] shrink-0 flex flex-col items-center justify-end gap-1 pb-4">
-                    <div className="relative border border-[#b7bac4] flex items-center justify-center" style={{ width: 44, height: 44 }}>
-                      <span className="font-bold text-white" style={{ ...mono, fontSize: 22 }}> A</span>
-                      <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-[#b7bac4] rounded-full -translate-y-0.5 translate-x-0.5" />
-                    </div>
-                    <span className="tracking-[0.2em] text-[#b7bac4]" style={{ ...mono, fontSize: 7 }}>APEXAI</span>
-                  </div>
+                  )}
                 </div>
+
+                {inbodyLoading ? (
+                  <div className="border border-[#b7bac4] flex items-center justify-center" style={{ height: 132 }}>
+                    <span style={{ ...mono, fontSize: 13, color: '#6b6f76' }}>불러오는 중...</span>
+                  </div>
+                ) : inbodyError ? (
+                  <div className="border border-[#b7bac4] flex items-center justify-center" style={{ height: 132 }}>
+                    <span style={{ ...mono, fontSize: 13, color: '#e2231a' }}>{inbodyError}</span>
+                  </div>
+                ) : !inbody ? (
+                  <NoInbodyData />
+                ) : (
+                  <div className="border border-[#b7bac4] px-[14px] py-[9px] flex items-stretch gap-4">
+                    <div className="bg-[#161415] px-[13px] pt-[15px] pb-[13px] w-[182px] shrink-0
+                                    flex flex-col gap-[11px]">
+                      <span style={{ ...mono, fontSize: 12, color: '#fff' }}>My Profile</span>
+                      <span className="font-bold" style={{ ...mono, fontSize: 12, color: '#fff' }}>
+                        체중. {inbody.weightKg?.toFixed(1) ?? '--'}kg
+                      </span>
+                      <span className="font-bold" style={{ ...mono, fontSize: 12, color: '#fff' }}>
+                        기초대사량. {inbody.bmrKcal ?? '--'}kcal
+                      </span>
+                      <span className="text-center mt-auto" style={{ ...mono, fontSize: 8, color: '#fff' }}>
+                        APEX AI
+                      </span>
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-4 justify-between">
+                      {inbodyRows.map((row) => (
+                        <InbodyRow key={row.label} label={row.label} value={row.value} />
+                      ))}
+                    </div>
+
+                    <div className="bg-[#161415] w-[80px] shrink-0 flex flex-col items-center justify-end gap-1 pb-4">
+                      <div className="relative border border-[#b7bac4] flex items-center justify-center" style={{ width: 44, height: 44 }}>
+                        <span className="font-bold text-white" style={{ ...mono, fontSize: 22 }}> A</span>
+                        <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-[#b7bac4] rounded-full -translate-y-0.5 translate-x-0.5" />
+                      </div>
+                      <span className="tracking-[0.2em] text-[#b7bac4]" style={{ ...mono, fontSize: 7 }}>APEXAI</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>

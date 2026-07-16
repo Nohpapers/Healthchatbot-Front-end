@@ -33,19 +33,17 @@ export function UserBubble({ children }) {
   );
 }
 
-/* ─── 빠른 답장 칩 (클릭 시 사용자 메시지로 전송) ─── */
-export function QuickReplyChip({ label, onClick }) {
+/* ─── AI 응답 대기 중 표시 (동기 호출이라 최대 30초까지 걸릴 수 있음) ─── */
+export function TypingBubble() {
   return (
-    <div className="flex justify-end mt-2">
-      <button
-        type="button"
-        onClick={onClick}
-        className="border border-[#161415] bg-white text-[#161415] px-5 h-[36px]
-                   hover:bg-[#161415] hover:text-white transition-colors"
-        style={{ ...mono, fontSize: 13, fontWeight: 700 }}
-      >
-        {label}
-      </button>
+    <div className="flex-1 border border-[#161415] px-5 py-3 flex items-center gap-2">
+      <span className="flex gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#161415] animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#161415] animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#161415] animate-bounce" style={{ animationDelay: '300ms' }} />
+      </span>
+      <p style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>답변을 작성하고 있습니다...</p>
     </div>
   );
 }
+
