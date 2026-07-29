@@ -8,6 +8,18 @@ function typeFromPath(pathname) {
   return CHAT_TYPE.COACHING;
 }
 
+/** 프로필 설정 화면 내 섹션 (Profile.js의 섹션 id와 1:1) */
+export const PROFILE_SECTIONS = [
+  ['basic', '기본 프로필'],
+  ['body', '신체 정보'],
+  ['goal', '운동 목표'],
+  ['pref', '운동 선호 설정'],
+  ['ai', 'AI 맞춤 설정'],
+  ['alarm', '알림 설정'],
+  ['privacy', '개인정보 및 데이터'],
+  ['account', '계정 및 보안'],
+];
+
 function formatDateTime(iso) {
   if (!iso) return '';
   return iso.slice(0, 10).replaceAll('-', '.');
@@ -107,6 +119,7 @@ export default function Sidebar() {
         )}
 
         <button
+          onClick={() => navigate('/dashboard')}
           className="flex items-center bg-[#f7f7f7]
                      border border-[rgba(183,186,196,0.45)] h-[40px] w-full
                      shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
@@ -116,13 +129,14 @@ export default function Sidebar() {
           <span style={{ ...mono, fontSize: 12, color: '#000' }} className="whitespace-nowrap">종합 데이터</span>
         </button>
         <button
+          onClick={() => navigate('/profile')}
           className="flex items-center bg-[#f7f7f7]
                      border border-[rgba(183,186,196,0.45)] h-[40px] w-full
                      shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)]
                      overflow-hidden hover:bg-[#efefef] transition-colors px-[14px] gap-[10px]"
         >
           <span className="material-symbols-outlined text-[#161415]" style={{ fontSize: 16 }}>settings</span>
-          <span style={{ ...mono, fontSize: 12, color: '#000' }} className="whitespace-nowrap">정보 설정</span>
+          <span style={{ ...mono, fontSize: 12, color: '#000' }} className="whitespace-nowrap">프로필 설정</span>
         </button>
         <button
           onClick={() => navigate('/api-test')}
@@ -135,6 +149,23 @@ export default function Sidebar() {
           <span style={{ ...mono, fontSize: 12, color: '#000' }} className="whitespace-nowrap">API 테스트</span>
         </button>
       </nav>
+
+      {/* 프로필 설정 화면에서만 노출되는 섹션 내비 */}
+      {location.pathname === '/profile' && (
+        <div className="mt-4 border border-[rgba(183,186,196,0.45)]">
+          {PROFILE_SECTIONS.map(([id, label], idx) => (
+            <button
+              key={id}
+              onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className={`w-full text-left px-[14px] py-[10px] hover:bg-[#f7f7f7] transition-colors
+                         ${idx === 0 ? 'text-[#e2231a] bg-[#ffecec]' : 'text-[#161415]'}`}
+              style={{ ...mono, fontSize: 12, borderBottom: idx < PROFILE_SECTIONS.length - 1 ? '1px solid #f0f0f0' : 'none' }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 로그아웃 */}
       <div className="pt-6 pb-6 mt-auto">

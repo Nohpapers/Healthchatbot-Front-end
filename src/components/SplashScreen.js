@@ -72,6 +72,25 @@ export default function SplashScreen() {
           >
             아이디로 로그인
           </button>
+
+          {/* 회원가입 / 비밀번호 찾기 */}
+          <div className="flex items-center justify-center gap-3 mt-1 text-xs text-[#666]">
+            <button
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="hover:text-[#161415] transition-colors"
+            >
+              회원가입
+            </button>
+            <span className="text-[#c8c8c8]">|</span>
+            <button
+              type="button"
+              onClick={() => navigate('/find-password')}
+              className="hover:text-[#161415] transition-colors"
+            >
+              비밀번호 찾기
+            </button>
+          </div>
         </div>
 
       </div>
