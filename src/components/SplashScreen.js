@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { loginWith } from '../api/auth';
 
 function GoogleIcon() {
   return (
@@ -21,9 +21,6 @@ function KakaoIcon() {
 }
 
 export default function SplashScreen() {
-  const navigate = useNavigate();
-  const goToChat = () => navigate('/chat');
-
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-[#f0f0f0]">
       <div className="flex w-[360px] flex-col items-center gap-6">
@@ -40,7 +37,7 @@ export default function SplashScreen() {
           {/* Google */}
           <button
             type="button"
-            onClick={goToChat}
+            onClick={() => loginWith('google')}
             className="flex w-full items-center justify-center rounded-full border border-[#dadce0] bg-white px-6 py-3 text-sm font-medium text-[#3c4043] shadow-sm hover:bg-gray-50 transition-colors"
           >
             <GoogleIcon />
@@ -50,47 +47,12 @@ export default function SplashScreen() {
           {/* 카카오 */}
           <button
             type="button"
-            onClick={goToChat}
+            onClick={() => loginWith('kakao')}
             className="flex w-full items-center justify-center rounded-full bg-[#FEE500] px-6 py-3 text-sm font-medium text-[#191919] hover:bg-[#f5dc00] transition-colors"
           >
             <KakaoIcon />
             카카오톡으로 계속하기
           </button>
-
-          {/* 구분선 */}
-          <div className="flex items-center gap-3 my-1">
-            <div className="h-px flex-1 bg-[#c8c8c8]" />
-            <span className="text-xs text-[#999]">또는</span>
-            <div className="h-px flex-1 bg-[#c8c8c8]" />
-          </div>
-
-          {/* 아이디 로그인 */}
-          <button
-            type="button"
-            onClick={goToChat}
-            className="flex w-full items-center justify-center rounded-full bg-[#161415] px-6 py-3 text-sm font-medium text-white hover:bg-[#2d2b2c] transition-colors"
-          >
-            아이디로 로그인
-          </button>
-
-          {/* 회원가입 / 비밀번호 찾기 */}
-          <div className="flex items-center justify-center gap-3 mt-1 text-xs text-[#666]">
-            <button
-              type="button"
-              onClick={() => navigate('/signup')}
-              className="hover:text-[#161415] transition-colors"
-            >
-              회원가입
-            </button>
-            <span className="text-[#c8c8c8]">|</span>
-            <button
-              type="button"
-              onClick={() => navigate('/find-password')}
-              className="hover:text-[#161415] transition-colors"
-            >
-              비밀번호 찾기
-            </button>
-          </div>
         </div>
 
       </div>

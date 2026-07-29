@@ -6,6 +6,7 @@ import NutritionAI from './components/NutritionAI';
 import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
 import Signup from './components/Signup';
+import OAuthCallback from './components/OAuthCallback';
 import ApiTester from './components/ApiTester';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/api-test" element={<ApiTester />} />
       </Routes>
     </BrowserRouter>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getChatSessions, ApiError } from '../api/client';
+import { logout } from '../api/auth';
 import { mono, CHAT_TYPE } from '../constants';
 
 function typeFromPath(pathname) {
@@ -170,7 +171,7 @@ export default function Sidebar() {
       {/* 로그아웃 */}
       <div className="pt-6 pb-6 mt-auto">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => { logout(); navigate('/'); }}
           className="flex items-center gap-1 hover:opacity-70 transition-opacity"
           style={{ ...mono, fontSize: 12, color: '#ff1c1e' }}
         >

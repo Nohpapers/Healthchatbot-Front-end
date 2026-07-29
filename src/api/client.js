@@ -1,4 +1,6 @@
-/* API 클라이언트 — api.md 단일 출처 기준 (MVP: 인증 없음, 고정 더미 유저 1명) */
+/* API 클라이언트 — api.md 단일 출처 기준. 인증은 구글/카카오 OAuth2 + JWT(Bearer). */
+
+import { getAccessToken, refreshAccessToken, clearTokens } from './auth';
 
 // 백엔드에 CORS가 없어 항상 같은 오리진의 상대경로로 호출하고, 프록시가 대신 전달한다:
 //  - 로컬 개발(npm start): package.json의 "proxy"
@@ -16,18 +18,40 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, options = {}) {
+/** accessToken을 실어 실제 fetch를 수행한다. */
+function fetchWithAuth(path, options) {
+  const token = getAccessToken();
+  return fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+}
+
+/**
+ * 인증이 필요한 API 호출. 401을 받으면 refreshToken으로 accessToken을 한 번 갱신하고
+ * 원 요청을 재시도한다. 갱신까지 실패하면 토큰을 비우고 401을 그대로 던진다(재로그인 유도).
+ */
+async function request(path, options = {}, _retried = false) {
   let res;
   try {
-    res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    res = await fetchWithAuth(path, options);
   } catch (networkError) {
     throw new ApiError({ title: '네트워크 오류', detail: '서버에 연결할 수 없습니다.' }, 0);
+  }
+
+  // accessToken 만료로 401 → 조용히 갱신 후 1회 재시도
+  if (res.status === 401 && !_retried) {
+    try {
+      await refreshAccessToken();
+    } catch {
+      clearTokens();
+      throw new ApiError({ title: 'Unauthorized', detail: '세션이 만료되었습니다. 다시 로그인해 주세요.' }, 401);
+    }
+    return request(path, options, true);
   }
 
   if (res.status === 204) return null;
