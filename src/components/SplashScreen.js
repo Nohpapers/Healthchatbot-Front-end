@@ -64,6 +64,15 @@ export default function SplashScreen() {
           >
             메인화면으로 이동
           </button>
+
+          {/* 발표용 — 회원가입 구현 페이지로 이동 */}
+          <button
+            type="button"
+            onClick={() => navigate('/signup')}
+            className="flex w-full items-center justify-center rounded-full border border-[#161415] bg-white px-6 py-3 text-sm font-medium text-[#161415] hover:bg-gray-50 transition-colors"
+          >
+            회원가입 페이지로 이동
+          </button>
         </div>
 
       </div>
