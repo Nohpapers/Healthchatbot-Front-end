@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { loginWith } from '../api/auth';
 
 function GoogleIcon() {
@@ -21,6 +22,7 @@ function KakaoIcon() {
 }
 
 export default function SplashScreen() {
+  const navigate = useNavigate();
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-[#f0f0f0]">
       <div className="flex w-[360px] flex-col items-center gap-6">
@@ -52,6 +54,15 @@ export default function SplashScreen() {
           >
             <KakaoIcon />
             카카오톡으로 계속하기
+          </button>
+
+          {/* 백엔드 미연결 임시 진입 — 메인화면으로 바로 이동 */}
+          <button
+            type="button"
+            onClick={() => navigate('/chat')}
+            className="flex w-full items-center justify-center rounded-full bg-[#161415] px-6 py-3 text-sm font-medium text-white hover:bg-[#2d2b2c] transition-colors"
+          >
+            메인화면으로 이동
           </button>
         </div>
 
