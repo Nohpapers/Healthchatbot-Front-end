@@ -166,6 +166,10 @@ export default function ChatStart() {
         { label: '체중 (kg)', value: inbody.weightKg?.toFixed(1) ?? '--' },
         { label: '골격근량(kg)', value: inbody.skeletalMuscleMassKg?.toFixed(1) ?? '--' },
         { label: '체지방량 (kg)', value: inbody.bodyFatMassKg?.toFixed(1) ?? '--' },
+        // bodyFatPct는 nullable (signup_profile_api_spec.md 1-2) — 없으면 행을 그리지 않는다
+        ...(inbody.bodyFatPct != null
+          ? [{ label: '체지방률 (%)', value: inbody.bodyFatPct.toFixed(1) }]
+          : []),
       ]
     : [];
 

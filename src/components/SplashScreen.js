@@ -46,14 +46,17 @@ export default function SplashScreen() {
             Google로 계속하기
           </button>
 
-          {/* 카카오 */}
+          {/* 카카오 — 백엔드에 kakao provider가 등록되어 있지 않아
+              /oauth2/authorization/kakao가 500을 반환한다. 등록되면 disabled만 지우면 된다. */}
           <button
             type="button"
+            disabled
+            title="백엔드에 카카오 OAuth 설정이 아직 없습니다"
             onClick={() => loginWith('kakao')}
-            className="flex w-full items-center justify-center rounded-full bg-[#FEE500] px-6 py-3 text-sm font-medium text-[#191919] hover:bg-[#f5dc00] transition-colors"
+            className="flex w-full items-center justify-center rounded-full bg-[#FEE500] px-6 py-3 text-sm font-medium text-[#191919] opacity-40 cursor-not-allowed"
           >
             <KakaoIcon />
-            카카오톡으로 계속하기
+            카카오톡으로 계속하기 (준비 중)
           </button>
 
           {/* 백엔드 미연결 임시 진입 — 메인화면으로 바로 이동 */}

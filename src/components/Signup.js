@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mono } from '../constants';
+import { putMe, putPreferences, postInbody, ApiError } from '../api/client';
+import {
+  GENDER, GOAL, EXPERIENCE_LEVEL, WORKOUT_DURATION, INJURY_PART,
+  toEnums, toFrequency, toIsoDate, toNumber,
+} from '../api/enums';
 
 const STEPS = [
   ['01', '개인정보 설정'],
@@ -34,8 +39,8 @@ function StepHeader({ current }) {
   );
 }
 
-/* ─── 라벨 + 입력 ─── */
-function Input({ label, required, placeholder, value, unit, defaultValue }) {
+/* ─── 라벨 + 입력 (제어 컴포넌트 — 값이 API 요청으로 그대로 나간다) ─── */
+function Input({ label, required, placeholder, value, onChange, unit }) {
   return (
     <label className="flex flex-col gap-2">
       {label && (
@@ -44,7 +49,7 @@ function Input({ label, required, placeholder, value, unit, defaultValue }) {
         </span>
       )}
       <div className="relative">
-        <input placeholder={placeholder} defaultValue={defaultValue}
+        <input placeholder={placeholder} value={value ?? ''} onChange={(e) => onChange(e.target.value)}
           className="w-full border border-[#e5e7eb] bg-[#fafafa] h-[46px] px-3 outline-none focus:border-[#161415] transition-colors"
           style={{ ...mono, fontSize: 13, color: '#161415' }} />
         {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2" style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>{unit}</span>}
@@ -92,15 +97,15 @@ const FREQ = ['주 1회', '주 2회', '주 3회', '주 4회', '주 5회', '주 6
 const TIMES = ['30분 이하', '60분', '90분', '120분 이상'];
 const PAINS = ['목', '어깨', '팔꿈치', '허리', '무릎', '손목', '발목', '없음'];
 
+/** 오늘 날짜를 yyyy-MM-dd로 (인바디 측정일 기본값) */
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /* ─── STEP 1: 개인정보 ─── */
-function Step1({ onNext, onLater }) {
-  const [gender, setGender] = useState('남성');
-  const [goal, setGoal] = useState('체지방 감소');
-  const [career, setCareer] = useState('6개월 ~ 1년');
-  const [freq, setFreq] = useState('주 3회');
-  const [time, setTime] = useState('60분');
-  const [pains, setPains] = useState(['없음']);
-  const togglePain = (p) => setPains((l) => l.includes(p) ? l.filter((x) => x !== p) : [...l, p]);
+function Step1({ form, set, onNext, onLater }) {
+  const togglePain = (p) =>
+    set({ pains: form.pains.includes(p) ? form.pains.filter((x) => x !== p) : [...form.pains, p] });
 
   return (
     <div className="flex flex-col gap-6">
@@ -109,17 +114,20 @@ function Step1({ onNext, onLater }) {
         <p className="mt-1" style={{ ...mono, fontSize: 13, color: '#6b6f76' }}>입력한 정보를 바탕으로 회원님에게 적합한 운동 루틴과 건강 분석을 제공합니다.</p>
       </div>
 
-      {/* 프로필 이미지 */}
+      {/* 프로필 이미지 — 업로드 API가 아직 없어(명세 4장) URL 직접 입력만 지원한다 */}
       <div className="border border-[rgba(183,186,196,0.6)] p-5 flex items-center gap-4">
-        <div className="w-[56px] h-[56px] rounded-full bg-[#e5e7eb] flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-[#9aa0a6]" style={{ fontSize: 26 }}>person</span>
+        <div className="w-[56px] h-[56px] rounded-full bg-[#e5e7eb] flex items-center justify-center shrink-0 overflow-hidden">
+          {form.profileImageUrl
+            ? <img src={form.profileImageUrl} alt="프로필" className="w-full h-full object-cover" />
+            : <span className="material-symbols-outlined text-[#9aa0a6]" style={{ fontSize: 26 }}>person</span>}
         </div>
         <div className="flex-1">
-          <div style={{ ...mono, fontSize: 12, color: '#9aa0a6' }}>프로필 이미지</div>
-          <div style={{ ...mono, fontSize: 11, color: '#9aa0a6' }}>JPG, PNG / 최대 5MB</div>
+          <Input label="프로필 이미지 URL" placeholder="https://..." value={form.profileImageUrl}
+            onChange={(v) => set({ profileImageUrl: v })} />
         </div>
-        <button className="border border-[#e5e7eb] h-[38px] px-4 hover:bg-[#f7f7f7] transition-colors" style={{ ...mono, fontSize: 12, color: '#161415' }}>이미지 업로드</button>
-        <button className="flex items-center gap-1 border border-[#161415] h-[38px] px-4 hover:bg-[#f7f7f7] transition-colors" style={{ ...mono, fontSize: 12, color: '#161415' }}>
+        <button onClick={() => set({ profileImageUrl: '' })}
+          className="flex items-center gap-1 border border-[#161415] h-[38px] px-4 hover:bg-[#f7f7f7] transition-colors self-end"
+          style={{ ...mono, fontSize: 12, color: '#161415' }}>
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>삭제
         </button>
       </div>
@@ -127,20 +135,38 @@ function Step1({ onNext, onLater }) {
       {/* 기본 개인정보 */}
       <Card title="기본 개인정보">
         <div className="flex flex-col gap-4">
-          <Input label="이름" required placeholder="이름을 입력해 주세요" />
-          <Input label="닉네임" required placeholder="닉네임을 입력해 주세요" />
+          {/* 이름은 소셜 로그인 때 채워진 값을 유지한다 (명세 2-2) — 회원가입에서 보내지 않는다 */}
+          <Input label="닉네임" required placeholder="닉네임을 입력해 주세요"
+            value={form.nickname} onChange={(v) => set({ nickname: v })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="생년월일" required placeholder="YYYY-MM-DD" />
-            <Input label="성별" required placeholder="선택" />
+            <Input label="생년월일" required placeholder="YYYY-MM-DD"
+              value={form.birthDate} onChange={(v) => set({ birthDate: v })} />
+            <Input label="이메일" placeholder="you@example.com"
+              value={form.email} onChange={(v) => set({ email: v })} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {['남성', '여성', '선택 안 함'].map((g) => (
-              <SelectBtn key={g} active={gender === g} onClick={() => setGender(g)}>{g}</SelectBtn>
-            ))}
+          <Input label="휴대전화 번호" placeholder="010-0000-0000"
+            value={form.phone} onChange={(v) => set({ phone: v })} />
+          <div>
+            <span style={{ ...mono, fontSize: 12, color: '#161415' }}>
+              성별 <span style={{ color: '#ff1c1e' }}>*</span>
+            </span>
+            <div className="grid grid-cols-3 gap-3 mt-2">
+              {['남성', '여성', '선택 안 함'].map((g) => (
+                <SelectBtn key={g} active={form.gender === g} onClick={() => set({ gender: g })}>{g}</SelectBtn>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="키" required placeholder="169" unit="cm" />
-            <Input label="현재 체중" required placeholder="60" unit="kg" />
+            <Input label="키" required placeholder="169" unit="cm"
+              value={form.heightCm} onChange={(v) => set({ heightCm: v })} />
+            <Input label="현재 체중" required placeholder="60" unit="kg"
+              value={form.weightKg} onChange={(v) => set({ weightKg: v })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="목표 체중" placeholder="62" unit="kg"
+              value={form.targetWeightKg} onChange={(v) => set({ targetWeightKg: v })} />
+            <Input label="목표 달성 예정일" placeholder="YYYY-MM-DD"
+              value={form.goalTargetDate} onChange={(v) => set({ goalTargetDate: v })} />
           </div>
         </div>
       </Card>
@@ -149,9 +175,9 @@ function Step1({ onNext, onLater }) {
       <Card title="운동 목표" sub="하나의 주요 목표를 선택해 주세요">
         <div className="flex flex-col gap-3">
           {GOALS.map(([name, desc]) => {
-            const active = goal === name;
+            const active = form.goal === name;
             return (
-              <button key={name} onClick={() => setGoal(name)}
+              <button key={name} onClick={() => set({ goal: name })}
                 className="text-left border p-4 transition-colors flex items-center justify-between"
                 style={{ borderColor: active ? '#ffb3b1' : '#e5e7eb', background: active ? '#fff2f1' : '#fff' }}>
                 <div>
@@ -169,7 +195,7 @@ function Step1({ onNext, onLater }) {
       <Card title="운동 경력">
         <div className="grid grid-cols-4 gap-3">
           {CAREERS.map((c) => (
-            <SelectBtn key={c} variant="red" active={career === c} onClick={() => setCareer(c)}>{c}</SelectBtn>
+            <SelectBtn key={c} variant="red" active={form.career === c} onClick={() => set({ career: c })}>{c}</SelectBtn>
           ))}
         </div>
       </Card>
@@ -179,19 +205,19 @@ function Step1({ onNext, onLater }) {
         <div style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>주당 운동 가능 횟수</div>
         <div className="flex flex-wrap gap-2 mt-3">
           {FREQ.map((f) => (
-            <SelectBtn key={f} variant="dark" active={freq === f} onClick={() => setFreq(f)}>{f}</SelectBtn>
+            <SelectBtn key={f} variant="dark" active={form.freq === f} onClick={() => set({ freq: f })}>{f}</SelectBtn>
           ))}
         </div>
         <div className="mt-5" style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>1회 운동 가능 시간</div>
         <div className="flex flex-wrap gap-2 mt-3">
           {TIMES.map((t) => (
-            <SelectBtn key={t} variant="dark" active={time === t} onClick={() => setTime(t)}>{t}</SelectBtn>
+            <SelectBtn key={t} variant="dark" active={form.time === t} onClick={() => set({ time: t })}>{t}</SelectBtn>
           ))}
         </div>
         <div className="mt-5" style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>운동 시 불편한 부위</div>
         <div className="flex flex-wrap gap-2 mt-3">
           {PAINS.map((p) => (
-            <SelectBtn key={p} variant="dark" active={pains.includes(p)} onClick={() => togglePain(p)}>{p}</SelectBtn>
+            <SelectBtn key={p} variant="dark" active={form.pains.includes(p)} onClick={() => togglePain(p)}>{p}</SelectBtn>
           ))}
         </div>
       </Card>
@@ -211,8 +237,8 @@ function Step1({ onNext, onLater }) {
 }
 
 /* ─── STEP 2: 인바디 ─── */
-function Step2({ onNext, onPrev }) {
-  const [mode, setMode] = useState('direct'); // 'direct' | 'skip'
+function Step2({ form, set, onSubmit, onPrev, saving, error }) {
+  const mode = form.inbodyMode;
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -221,9 +247,9 @@ function Step2({ onNext, onPrev }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setMode('direct')} className="h-[46px] border transition-colors"
+        <button onClick={() => set({ inbodyMode: 'direct' })} className="h-[46px] border transition-colors"
           style={{ ...mono, fontSize: 13, fontWeight: 700, borderColor: mode === 'direct' ? '#ff1c1e' : '#e5e7eb', color: mode === 'direct' ? '#e2231a' : '#6b6f76' }}>직접 입력</button>
-        <button onClick={() => setMode('skip')} className="h-[46px] border transition-colors"
+        <button onClick={() => set({ inbodyMode: 'skip' })} className="h-[46px] border transition-colors"
           style={{ ...mono, fontSize: 13, fontWeight: 700, borderColor: mode === 'skip' ? '#ff1c1e' : '#e5e7eb', color: mode === 'skip' ? '#e2231a' : '#6b6f76' }}>인바디 정보 없이 시작</button>
       </div>
 
@@ -231,9 +257,9 @@ function Step2({ onNext, onPrev }) {
         <>
           <Card title="측정 기본정보" sub="* 개인정보 설정에서 입력한 키와 체중이 자동으로 불러와졌습니다.">
             <div className="grid grid-cols-3 gap-4">
-              <Input label="측정일" defaultValue="2025-07-20" />
-              <Input label="키" defaultValue="169" unit="cm" />
-              <Input label="체중" defaultValue="60" unit="kg" />
+              <Input label="측정일" required value={form.measuredAt} onChange={(v) => set({ measuredAt: v })} />
+              <Input label="키" unit="cm" value={form.heightCm} onChange={(v) => set({ heightCm: v })} />
+              <Input label="체중" required unit="kg" value={form.weightKg} onChange={(v) => set({ weightKg: v })} />
             </div>
           </Card>
           <Card title="신체 구성 정보">
@@ -243,12 +269,12 @@ function Step2({ onNext, onPrev }) {
                   <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>골격근량</span>
                   <span className="px-2 py-[1px]" style={{ ...mono, fontSize: 9, fontWeight: 700, background: '#ffd6d5', color: '#e2231a' }}>핵심</span>
                 </div>
-                <Input defaultValue="28.4" unit="kg" />
+                <Input unit="kg" value={form.skeletalMuscleMassKg} onChange={(v) => set({ skeletalMuscleMassKg: v })} />
                 <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 28.4kg</div>
               </div>
               <div>
                 <div style={{ ...mono, fontSize: 12, color: '#161415', marginBottom: 8 }}>체지방량</div>
-                <Input defaultValue="10.2" unit="kg" />
+                <Input unit="kg" value={form.bodyFatMassKg} onChange={(v) => set({ bodyFatMassKg: v })} />
                 <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 10.2kg</div>
               </div>
               <div className="mt-4">
@@ -256,12 +282,12 @@ function Step2({ onNext, onPrev }) {
                   <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>체지방률</span>
                   <span className="px-2 py-[1px]" style={{ ...mono, fontSize: 9, fontWeight: 700, background: '#ffd6d5', color: '#e2231a' }}>핵심</span>
                 </div>
-                <Input defaultValue="18.5" />
+                <Input unit="%" value={form.bodyFatPct} onChange={(v) => set({ bodyFatPct: v })} />
                 <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 18.5%</div>
               </div>
               <div className="mt-4">
                 <div style={{ ...mono, fontSize: 12, color: '#161415', marginBottom: 8 }}>기초대사량</div>
-                <Input defaultValue="1520" unit="kcal" />
+                <Input unit="kcal" value={form.bmrKcal} onChange={(v) => set({ bmrKcal: v })} />
                 <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 1520kcal</div>
               </div>
             </div>
@@ -269,22 +295,30 @@ function Step2({ onNext, onPrev }) {
         </>
       )}
 
+      {error && (
+        <div className="border border-[#ffb3b1] bg-[#fff2f1] px-4 py-3">
+          <p style={{ ...mono, fontSize: 12, color: '#e2231a' }}>{error}</p>
+        </div>
+      )}
+
       <div className="flex justify-end gap-3 pt-2">
-        <button onClick={onPrev} className="border border-[#b7bac4] h-[42px] px-5 hover:bg-[#f7f7f7] transition-colors" style={{ ...mono, fontSize: 13, color: '#161415' }}>이전</button>
-        <button onClick={onNext} className="bg-[#161415] text-white h-[42px] px-5 hover:opacity-80 transition-opacity" style={{ ...mono, fontSize: 13, fontWeight: 700 }}>설정 완료</button>
+        <button onClick={onPrev} disabled={saving} className="border border-[#b7bac4] h-[42px] px-5 hover:bg-[#f7f7f7] transition-colors disabled:opacity-40" style={{ ...mono, fontSize: 13, color: '#161415' }}>이전</button>
+        <button onClick={onSubmit} disabled={saving} className="bg-[#161415] text-white h-[42px] px-5 hover:opacity-80 transition-opacity disabled:opacity-40" style={{ ...mono, fontSize: 13, fontWeight: 700 }}>
+          {saving ? '저장 중...' : '설정 완료'}
+        </button>
       </div>
     </div>
   );
 }
 
 /* ─── STEP 3: 완료 ─── */
-function Step3({ onStart }) {
+function Step3({ form, onStart }) {
   const rows = [
-    ['운동 목표', '근육 증가'],
-    ['주간 운동 횟수', '주 3회'],
-    ['최근 체중', '60 kg'],
-    ['골격근량', '28.4 kg'],
-    ['체지방률', '18.5%'],
+    ['운동 목표', form.goal],
+    ['주간 운동 횟수', form.freq],
+    ['최근 체중', form.weightKg ? `${form.weightKg} kg` : '미입력'],
+    ['골격근량', form.skeletalMuscleMassKg ? `${form.skeletalMuscleMassKg} kg` : '미입력'],
+    ['체지방률', form.bodyFatPct ? `${form.bodyFatPct}%` : '미입력'],
   ];
   return (
     <div className="flex flex-col items-center gap-6 pt-6">
@@ -306,9 +340,108 @@ function Step3({ onStart }) {
   );
 }
 
+const INITIAL_FORM = {
+  nickname: '', birthDate: '', email: '', phone: '',
+  profileImageUrl: '', gender: '남성',
+  heightCm: '', weightKg: '', targetWeightKg: '', goalTargetDate: '',
+  goal: '체지방 감소', career: '6개월 ~ 1년', freq: '주 3회', time: '60분', pains: ['없음'],
+  inbodyMode: 'direct', measuredAt: today(),
+  skeletalMuscleMassKg: '', bodyFatMassKg: '', bodyFatPct: '', bmrKcal: '',
+};
+
 export default function Signup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  /**
+   * 회원가입 저장 (signup_profile_api_spec.md 0장 흐름)
+   *  1) PUT /api/users/me      — 기본정보 · 운동목표 · 운동환경
+   *  2) PUT /api/users/me/preferences — 불편한 부위 (운동 선호는 프로필 화면에서 이어서)
+   *  3) POST /api/inbody       — '직접 입력'을 고른 경우에만
+   * 유저 INSERT가 아니라 로그인으로 이미 만들어진 유저의 UPDATE라서 토큰이 반드시 필요하다.
+   */
+  async function handleSubmit() {
+    if (saving) return;
+    setError(null);
+
+    const heightCm = toNumber(form.heightCm);
+    const gender = GENDER[form.gender];
+
+    // 백엔드 필수값 — 없으면 400 ProblemDetail이 오므로 앞단에서 먼저 잡는다 (명세 2-2 검증)
+    if (!gender) {
+      setStep(0);
+      setError('성별을 남성 또는 여성으로 선택해 주세요. (백엔드 필수값)');
+      return;
+    }
+    if (!heightCm || heightCm <= 0) {
+      setStep(0);
+      setError('키를 0보다 큰 숫자로 입력해 주세요. (백엔드 필수값)');
+      return;
+    }
+
+    const profile = {
+      nickname: form.nickname || null,
+      gender,
+      birthDate: toIsoDate(form.birthDate),
+      email: form.email || null,
+      phone: form.phone || null,
+      profileImageUrl: form.profileImageUrl || null,
+      heightCm,
+      goals: toEnums(GOAL, [form.goal]),
+      experienceLevel: EXPERIENCE_LEVEL[form.career] ?? null,
+      workoutFrequencyPerWeek: toFrequency(form.freq),
+      workoutDuration: WORKOUT_DURATION[form.time] ?? null,
+      targetWeightKg: toNumber(form.targetWeightKg),
+      targetMuscleKg: null,
+      goalTargetDate: toIsoDate(form.goalTargetDate),
+    };
+
+    setSaving(true);
+    try {
+      await putMe(profile);
+      await putPreferences({
+        preferredWorkoutTypes: [],
+        injuryParts: toEnums(INJURY_PART, form.pains),
+      });
+
+      if (form.inbodyMode === 'direct') {
+        const record = {
+          measuredAt: toIsoDate(form.measuredAt),
+          weightKg: toNumber(form.weightKg),
+          bmrKcal: toNumber(form.bmrKcal),
+          skeletalMuscleMassKg: toNumber(form.skeletalMuscleMassKg),
+          bodyFatMassKg: toNumber(form.bodyFatMassKg),
+          bodyFatPct: toNumber(form.bodyFatPct),
+        };
+        // 명세 2-4 검증 규칙 — 하나라도 비면 400이라, 인바디만 건너뛰고 프로필은 저장된 상태로 둔다
+        const missing = !record.measuredAt || !record.weightKg || !record.bmrKcal
+          || !record.skeletalMuscleMassKg || record.bodyFatMassKg == null;
+        if (missing) {
+          setError('인바디 항목(측정일·체중·기초대사량·골격근량·체지방량)을 모두 채워주세요. 프로필은 저장되었습니다.');
+          setSaving(false);
+          return;
+        }
+        await postInbody(record);
+      }
+
+      setStep(2);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('로그인이 필요합니다. 회원가입은 구글 로그인 이후에 진행할 수 있습니다.');
+      } else if (err instanceof ApiError && err.status === 409) {
+        setError('같은 측정일의 인바디 기록이 이미 있습니다. 측정일을 바꿔주세요.');
+      } else {
+        setError(err?.message || '저장에 실패했습니다.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -320,9 +453,21 @@ export default function Signup() {
         <StepHeader current={step} />
 
         <div className="py-10">
-          {step === 0 && <Step1 onNext={() => setStep(1)} onLater={() => navigate('/')} />}
-          {step === 1 && <Step2 onNext={() => setStep(2)} onPrev={() => setStep(0)} />}
-          {step === 2 && <Step3 onStart={() => navigate('/chat')} />}
+          {step === 0 && (
+            <>
+              {error && (
+                <div className="border border-[#ffb3b1] bg-[#fff2f1] px-4 py-3 mb-6">
+                  <p style={{ ...mono, fontSize: 12, color: '#e2231a' }}>{error}</p>
+                </div>
+              )}
+              <Step1 form={form} set={set} onNext={() => { setError(null); setStep(1); }} onLater={() => navigate('/')} />
+            </>
+          )}
+          {step === 1 && (
+            <Step2 form={form} set={set} onSubmit={handleSubmit} onPrev={() => setStep(0)}
+              saving={saving} error={error} />
+          )}
+          {step === 2 && <Step3 form={form} onStart={() => navigate('/chat')} />}
         </div>
       </div>
     </div>

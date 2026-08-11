@@ -6,7 +6,7 @@ import { getAccessToken, refreshAccessToken, clearTokens } from './auth';
 //  - 로컬 개발(npm start): package.json의 "proxy"
 //  - Vercel 배포: vercel.json의 rewrites (/api/* → Railway)
 // 다른 환경에서 백엔드를 직접 가리켜야 하면 REACT_APP_API_BASE_URL로 덮어쓴다.
-const BASE_URL = 'https://healthcarebelee-production.up.railway.app/api';
+const BASE_URL = '/api';
 
 /** RFC 7807 ProblemDetail을 그대로 담는 에러 */
 export class ApiError extends Error {
@@ -96,6 +96,66 @@ export function getChatSessionDetail(sessionId) {
   return request(`/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' });
 }
 
+/* ── 프로필 · 회원가입 (signup_profile_api_spec.md 2장) ── */
+
+/** GET /api/users/me — 프로필 전체 + profileCompleted */
+export function getMe() {
+  return request('/users/me', { method: 'GET' });
+}
+
+/** PUT /api/users/me — 회원가입1 통째 저장. gender·heightCm가 필수(없으면 400) */
+export function putMe(profile) {
+  return request('/users/me', { method: 'PUT', body: JSON.stringify(profile) });
+}
+
+/** PATCH /api/users/me — 프로필 부분 수정. 보낸 키만 갱신된다 */
+export function patchMe(partial) {
+  return request('/users/me', { method: 'PATCH', body: JSON.stringify(partial) });
+}
+
+/** POST /api/inbody — 인바디 1건 저장(회원가입2 · 재측정). 201 + 저장 결과 */
+export function postInbody(record) {
+  return request('/inbody', { method: 'POST', body: JSON.stringify(record) });
+}
+
+/* ── 설정 3종. GET은 미생성 유저에서 404가 날 수 있어 null로 접는다 ── */
+
+async function getSettings(path) {
+  try {
+    return await request(path, { method: 'GET' });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/** GET · PUT /api/users/me/preferences — 운동 선호 (PUT은 upsert) */
+export function getPreferences() {
+  return getSettings('/users/me/preferences');
+}
+export function putPreferences(prefs) {
+  return request('/users/me/preferences', { method: 'PUT', body: JSON.stringify(prefs) });
+}
+
+/** GET · PUT /api/users/me/ai-settings — AI 맞춤 설정 */
+export function getAiSettings() {
+  return getSettings('/users/me/ai-settings');
+}
+export function putAiSettings(settings) {
+  return request('/users/me/ai-settings', { method: 'PUT', body: JSON.stringify(settings) });
+}
+
+/** GET · PUT /api/users/me/notification-settings — 알림 설정 */
+export function getNotificationSettings() {
+  return getSettings('/users/me/notification-settings');
+}
+export function putNotificationSettings(settings) {
+  return request('/users/me/notification-settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+}
+
 export function apiBaseUrl() {
   return BASE_URL;
 }
@@ -111,9 +171,15 @@ export async function rawRequest(path, { method = 'GET', body } = {}) {
 
   let res;
   try {
+    const token = getAccessToken();
     res = await fetch(url, {
       method,
-      headers: body != null ? { 'Content-Type': 'application/json' } : undefined,
+      // 인증이 필요한 엔드포인트를 테스트 페이지에서도 그대로 찔러볼 수 있게 토큰을 실어 보낸다.
+      // (없으면 백엔드가 401 "로그인이 필요합니다"를 돌려준다 — 그 자체도 확인 대상이다)
+      headers: {
+        ...(body != null ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: body != null ? body : undefined,
     });
   } catch (networkError) {

@@ -11,8 +11,9 @@
  */
 
 // OAuth 진입점은 /api 하위가 아니라 백엔드 루트(Spring Security 기본 경로)라서 오리진을 따로 둔다.
-export const BACKEND_ORIGIN = 'https://healthcarebelee-production.up.railway.app';
-const AUTH_BASE = `${BACKEND_ORIGIN}/api/auth`;
+export const BACKEND_ORIGIN = 'https://apexai-healthcare.up.railway.app';
+// 토큰 교환·갱신은 CORS를 피해 같은 오리진의 프록시(/api)를 탄다.
+const AUTH_BASE = '/api/auth';
 
 const ACCESS_KEY = 'apex_access_token';
 const REFRESH_KEY = 'apex_refresh_token';
@@ -41,9 +42,29 @@ export function loginWith(provider /* 'google' | 'kakao' */) {
   window.location.href = `${BACKEND_ORIGIN}/oauth2/authorization/${provider}`;
 }
 
+/**
+ * fetch가 응답 자체를 못 받은 경우(TypeError "Failed to fetch")를 진단 가능한 메시지로 바꾼다.
+ * 이 단계에서 실패하는 원인은 거의 정해져 있다:
+ *  - 상대경로 요청이 프록시를 못 탐 (dev 서버 미재시작 / 배포에 rewrite 없음)
+ *  - 절대 URL로 나가서 백엔드 CORS에 막힘 (백엔드는 크로스 오리진을 403으로 거부한다)
+ *  - dev 서버가 죽었거나 다른 포트로 떠 있음
+ */
+async function fetchOrExplain(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    const target = new URL(url, window.location.origin).href;
+    throw new AuthError(
+      `서버에 연결할 수 없습니다 (${target}). 개발 서버를 재시작했는지, `
+      + `주소창의 포트가 개발 서버 포트와 같은지 확인해 주세요.`,
+      0
+    );
+  }
+}
+
 /** code → 토큰 교환. 401(만료/이미 소비/없음)이면 예외. */
 export async function exchangeCode(code) {
-  const res = await fetch(`${AUTH_BASE}/exchange`, {
+  const res = await fetchOrExplain(`${AUTH_BASE}/exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
@@ -62,7 +83,7 @@ export async function refreshAccessToken() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new AuthError('로그인이 필요합니다.', 401);
 
-  const res = await fetch(`${AUTH_BASE}/refresh`, {
+  const res = await fetchOrExplain(`${AUTH_BASE}/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken }),

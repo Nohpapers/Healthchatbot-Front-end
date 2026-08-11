@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiBaseUrl, rawRequest } from '../api/client';
+import { isAuthenticated } from '../api/auth';
 import { mono } from '../constants';
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
@@ -49,6 +50,63 @@ const PRESETS = [
     path: '/chat/sessions/{sessionId}',
     body: '',
   },
+  { label: 'GET 내 프로필', method: 'GET', path: '/users/me', body: '' },
+  {
+    label: 'PUT 회원가입1 저장',
+    method: 'PUT',
+    path: '/users/me',
+    body: JSON.stringify(
+      {
+        nickname: '길동이',
+        gender: 'MALE',
+        birthDate: '1998-03-21',
+        email: 'hong@example.com',
+        phone: '010-1234-5678',
+        heightCm: 175.0,
+        goals: ['MUSCLE_GAIN'],
+        experienceLevel: 'M6_1Y',
+        workoutFrequencyPerWeek: 4,
+        workoutDuration: 'M60',
+        targetWeightKg: 72.0,
+        targetMuscleKg: 35.0,
+        goalTargetDate: '2026-12-31',
+      },
+      null,
+      2
+    ),
+  },
+  {
+    label: 'PATCH 프로필 부분수정',
+    method: 'PATCH',
+    path: '/users/me',
+    body: JSON.stringify({ nickname: '홍반장', targetWeightKg: 70.0 }, null, 2),
+  },
+  {
+    label: 'POST 인바디 저장',
+    method: 'POST',
+    path: '/inbody',
+    body: JSON.stringify(
+      {
+        measuredAt: '2026-07-16',
+        weightKg: 74.5,
+        bmrKcal: 1620,
+        skeletalMuscleMassKg: 33.2,
+        bodyFatMassKg: 14.1,
+        bodyFatPct: 18.9,
+      },
+      null,
+      2
+    ),
+  },
+  { label: 'GET 운동 선호', method: 'GET', path: '/users/me/preferences', body: '' },
+  {
+    label: 'PUT 운동 선호',
+    method: 'PUT',
+    path: '/users/me/preferences',
+    body: JSON.stringify({ preferredWorkoutTypes: ['WEIGHT', 'CARDIO'], injuryParts: ['NONE'] }, null, 2),
+  },
+  { label: 'GET AI 설정', method: 'GET', path: '/users/me/ai-settings', body: '' },
+  { label: 'GET 알림 설정', method: 'GET', path: '/users/me/notification-settings', body: '' },
 ];
 
 function statusColor(status, ok) {
@@ -72,6 +130,7 @@ export default function ApiTester() {
   const [capturedSessionId, setCapturedSessionId] = useState(null);
 
   const bodyAllowed = method !== 'GET' && method !== 'DELETE';
+  const loggedIn = isAuthenticated();
 
   function applyPreset(preset) {
     setMethod(preset.method);
@@ -157,7 +216,24 @@ export default function ApiTester() {
 
           <p style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>
             Base URL: <span style={{ fontWeight: 700 }}>{apiBaseUrl()}</span>
+            {' · '}
+            토큰:{' '}
+            <span style={{ fontWeight: 700, color: loggedIn ? '#1a8f3c' : '#e2231a' }}>
+              {loggedIn ? '있음' : '없음'}
+            </span>
           </p>
+
+          {/* 토큰이 없으면 대부분의 엔드포인트가 401(또는 바디 검증이 먼저 걸려 400)을 준다.
+              테스트 결과를 오해하지 않도록 원인을 먼저 알려준다. */}
+          {!loggedIn && (
+            <div className="border border-[#ffb3b1] bg-[#fff2f1] px-4 py-3">
+              <p style={{ ...mono, fontSize: 12, color: '#e2231a' }}>
+                로그인 토큰이 없습니다. 인증이 필요한 엔드포인트는 401을 반환하고,
+                <span style={{ fontWeight: 700 }}> PUT /users/me · POST /inbody</span>는 바디 검증이 먼저
+                걸려 400 &quot;Invalid request content.&quot;로 보입니다. 먼저 구글 로그인을 해주세요.
+              </p>
+            </div>
+          )}
 
           {/* 프리셋 */}
           <div className="flex flex-wrap gap-2">
