@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exchangeCode } from '../api/auth';
+import { getMe } from '../api/client';
 import { mono } from '../constants';
 
 /**
@@ -24,8 +25,16 @@ export default function OAuthCallback() {
       return;
     }
 
+    /* 토큰을 받은 뒤 프로필 완성 여부로 행선지를 가른다 (signup_profile_api_spec.md 2-1).
+     * 소셜 로그인은 users에 name만 있는 최소 row를 만들기 때문에, 첫 로그인 유저는
+     * gender·heightCm이 비어 있고 profileCompleted=false다 → 회원가입 화면으로 보낸다.
+     * 프로필 조회가 실패해도 로그인 자체는 성공한 상태이므로 메인으로 통과시킨다. */
     exchangeCode(code)
-      .then(() => navigate('/chat', { replace: true }))
+      .then(() => getMe().catch(() => null))
+      .then((me) => {
+        const destination = me && me.profileCompleted === false ? '/signup' : '/chat';
+        navigate(destination, { replace: true });
+      })
       .catch((err) => setError(err.message || '로그인에 실패했습니다.'));
   }, [params, navigate]);
 

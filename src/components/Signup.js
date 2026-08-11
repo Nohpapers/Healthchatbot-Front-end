@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mono } from '../constants';
-import { putMe, putPreferences, postInbody, ApiError } from '../api/client';
+import { getMe, putMe, putPreferences, postInbody, ApiError } from '../api/client';
 import {
   GENDER, GOAL, EXPERIENCE_LEVEL, WORKOUT_DURATION, INJURY_PART,
-  toEnums, toFrequency, toIsoDate, toNumber,
+  toEnums, labelOf, toFrequency, toIsoDate, toNumber,
 } from '../api/enums';
 
 const STEPS = [
@@ -146,6 +146,8 @@ function Step1({ form, set, onNext, onLater }) {
           </div>
           <Input label="휴대전화 번호" placeholder="010-0000-0000"
             value={form.phone} onChange={(v) => set({ phone: v })} />
+          <Input label="자기소개" placeholder="3대 400 목표"
+            value={form.bio} onChange={(v) => set({ bio: v })} />
           <div>
             <span style={{ ...mono, fontSize: 12, color: '#161415' }}>
               성별 <span style={{ color: '#ff1c1e' }}>*</span>
@@ -238,7 +240,6 @@ function Step1({ form, set, onNext, onLater }) {
 
 /* ─── STEP 2: 인바디 ─── */
 function Step2({ form, set, onSubmit, onPrev, saving, error }) {
-  const mode = form.inbodyMode;
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -246,54 +247,49 @@ function Step2({ form, set, onSubmit, onPrev, saving, error }) {
         <p className="mt-1" style={{ ...mono, fontSize: 13, color: '#6b6f76' }}>최근 인바디 측정 결과를 입력하면 신체 구성에 맞는 운동과 식단을 추천할 수 있습니다.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => set({ inbodyMode: 'direct' })} className="h-[46px] border transition-colors"
-          style={{ ...mono, fontSize: 13, fontWeight: 700, borderColor: mode === 'direct' ? '#ff1c1e' : '#e5e7eb', color: mode === 'direct' ? '#e2231a' : '#6b6f76' }}>직접 입력</button>
-        <button onClick={() => set({ inbodyMode: 'skip' })} className="h-[46px] border transition-colors"
-          style={{ ...mono, fontSize: 13, fontWeight: 700, borderColor: mode === 'skip' ? '#ff1c1e' : '#e5e7eb', color: mode === 'skip' ? '#e2231a' : '#6b6f76' }}>인바디 정보 없이 시작</button>
-      </div>
-
-      {mode === 'direct' && (
-        <>
-          <Card title="측정 기본정보" sub="* 개인정보 설정에서 입력한 키와 체중이 자동으로 불러와졌습니다.">
-            <div className="grid grid-cols-3 gap-4">
-              <Input label="측정일" required value={form.measuredAt} onChange={(v) => set({ measuredAt: v })} />
-              <Input label="키" unit="cm" value={form.heightCm} onChange={(v) => set({ heightCm: v })} />
-              <Input label="체중" required unit="kg" value={form.weightKg} onChange={(v) => set({ weightKg: v })} />
+      {/* database.md 7장: '인바디 없이 시작' 옵션은 제거됐고 인바디는 항상 입력된다.
+          inbody_records의 체중·기초대사량·골격근량·체지방량이 not null이라 비우면 저장 자체가 안 된다. */}
+      <Card title="측정 기본정보" sub="* 개인정보 설정에서 입력한 키와 체중이 자동으로 불러와졌습니다.">
+        <div className="grid grid-cols-3 gap-4">
+          <Input label="측정일" required value={form.measuredAt} onChange={(v) => set({ measuredAt: v })} />
+          <Input label="키" unit="cm" value={form.heightCm} onChange={(v) => set({ heightCm: v })} />
+          <Input label="체중" required unit="kg" value={form.weightKg} onChange={(v) => set({ weightKg: v })} />
+        </div>
+      </Card>
+      <Card title="신체 구성 정보">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>골격근량</span>
+              <span style={{ color: '#ff1c1e', ...mono, fontSize: 12 }}>*</span>
             </div>
-          </Card>
-          <Card title="신체 구성 정보">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>골격근량</span>
-                  <span className="px-2 py-[1px]" style={{ ...mono, fontSize: 9, fontWeight: 700, background: '#ffd6d5', color: '#e2231a' }}>핵심</span>
-                </div>
-                <Input unit="kg" value={form.skeletalMuscleMassKg} onChange={(v) => set({ skeletalMuscleMassKg: v })} />
-                <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 28.4kg</div>
-              </div>
-              <div>
-                <div style={{ ...mono, fontSize: 12, color: '#161415', marginBottom: 8 }}>체지방량</div>
-                <Input unit="kg" value={form.bodyFatMassKg} onChange={(v) => set({ bodyFatMassKg: v })} />
-                <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 10.2kg</div>
-              </div>
-              <div className="mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>체지방률</span>
-                  <span className="px-2 py-[1px]" style={{ ...mono, fontSize: 9, fontWeight: 700, background: '#ffd6d5', color: '#e2231a' }}>핵심</span>
-                </div>
-                <Input unit="%" value={form.bodyFatPct} onChange={(v) => set({ bodyFatPct: v })} />
-                <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 18.5%</div>
-              </div>
-              <div className="mt-4">
-                <div style={{ ...mono, fontSize: 12, color: '#161415', marginBottom: 8 }}>기초대사량</div>
-                <Input unit="kcal" value={form.bmrKcal} onChange={(v) => set({ bmrKcal: v })} />
-                <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 1520kcal</div>
-              </div>
+            <Input unit="kg" value={form.skeletalMuscleMassKg} onChange={(v) => set({ skeletalMuscleMassKg: v })} />
+            <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 28.4kg</div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>체지방량</span>
+              <span style={{ color: '#ff1c1e', ...mono, fontSize: 12 }}>*</span>
             </div>
-          </Card>
-        </>
-      )}
+            <Input unit="kg" value={form.bodyFatMassKg} onChange={(v) => set({ bodyFatMassKg: v })} />
+            <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 10.2kg</div>
+          </div>
+          <div className="mt-4">
+            {/* body_fat_pct만 nullable — 모르면 비워둬도 저장된다 */}
+            <div style={{ ...mono, fontSize: 12, color: '#161415', marginBottom: 8 }}>체지방률 (선택)</div>
+            <Input unit="%" value={form.bodyFatPct} onChange={(v) => set({ bodyFatPct: v })} />
+            <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 18.5%</div>
+          </div>
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#161415' }}>기초대사량</span>
+              <span style={{ color: '#ff1c1e', ...mono, fontSize: 12 }}>*</span>
+            </div>
+            <Input unit="kcal" value={form.bmrKcal} onChange={(v) => set({ bmrKcal: v })} />
+            <div className="mt-1" style={{ ...mono, fontSize: 11, color: '#6b6f76' }}>예시: 1520kcal</div>
+          </div>
+        </div>
+      </Card>
 
       {error && (
         <div className="border border-[#ffb3b1] bg-[#fff2f1] px-4 py-3">
@@ -341,11 +337,11 @@ function Step3({ form, onStart }) {
 }
 
 const INITIAL_FORM = {
-  nickname: '', birthDate: '', email: '', phone: '',
+  nickname: '', birthDate: '', email: '', phone: '', bio: '',
   profileImageUrl: '', gender: '남성',
   heightCm: '', weightKg: '', targetWeightKg: '', goalTargetDate: '',
   goal: '체지방 감소', career: '6개월 ~ 1년', freq: '주 3회', time: '60분', pains: ['없음'],
-  inbodyMode: 'direct', measuredAt: today(),
+  measuredAt: today(),
   skeletalMuscleMassKg: '', bodyFatMassKg: '', bodyFatPct: '', bmrKcal: '',
 };
 
@@ -355,8 +351,41 @@ export default function Signup() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [name, setName] = useState('');
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  /* 회원가입은 유저 INSERT가 아니라 로그인으로 이미 만들어진 유저의 UPDATE다
+   * (signup_profile_api_spec.md 0장). 그래서 진입 시 현재 값을 불러와 채운다 —
+   * 이름은 소셜 로그인에서 받은 값이고, 재진입 시 이전 입력도 그대로 보여야 한다.
+   * 토큰이 없으면 401이 나는데, 그때는 빈 폼으로 두고 저장 시점에 안내한다. */
+  useEffect(() => {
+    let cancelled = false;
+    getMe()
+      .then((me) => {
+        if (cancelled || !me) return;
+        setName(me.name ?? '');
+        setForm((f) => ({
+          ...f,
+          nickname: me.nickname ?? f.nickname,
+          birthDate: me.birthDate ?? f.birthDate,
+          email: me.email ?? f.email,
+          phone: me.phone ?? f.phone,
+          bio: me.bio ?? f.bio,
+          profileImageUrl: me.profileImageUrl ?? f.profileImageUrl,
+          gender: labelOf(GENDER, me.gender) ?? f.gender,
+          heightCm: me.heightCm ?? f.heightCm,
+          targetWeightKg: me.targetWeightKg ?? f.targetWeightKg,
+          goalTargetDate: me.goalTargetDate ?? f.goalTargetDate,
+          goal: labelOf(GOAL, me.goals?.[0]) ?? f.goal,
+          career: labelOf(EXPERIENCE_LEVEL, me.experienceLevel) ?? f.career,
+          freq: me.workoutFrequencyPerWeek ? `주 ${me.workoutFrequencyPerWeek}회` : f.freq,
+          time: labelOf(WORKOUT_DURATION, me.workoutDuration) ?? f.time,
+        }));
+      })
+      .catch(() => { /* 미로그인·조회 실패 — 빈 폼으로 진행 */ });
+    return () => { cancelled = true; };
+  }, []);
 
   /**
    * 회원가입 저장 (signup_profile_api_spec.md 0장 흐름)
@@ -391,6 +420,7 @@ export default function Signup() {
       email: form.email || null,
       phone: form.phone || null,
       profileImageUrl: form.profileImageUrl || null,
+      bio: form.bio || null,
       heightCm,
       goals: toEnums(GOAL, [form.goal]),
       experienceLevel: EXPERIENCE_LEVEL[form.career] ?? null,
@@ -409,25 +439,23 @@ export default function Signup() {
         injuryParts: toEnums(INJURY_PART, form.pains),
       });
 
-      if (form.inbodyMode === 'direct') {
-        const record = {
-          measuredAt: toIsoDate(form.measuredAt),
-          weightKg: toNumber(form.weightKg),
-          bmrKcal: toNumber(form.bmrKcal),
-          skeletalMuscleMassKg: toNumber(form.skeletalMuscleMassKg),
-          bodyFatMassKg: toNumber(form.bodyFatMassKg),
-          bodyFatPct: toNumber(form.bodyFatPct),
-        };
-        // 명세 2-4 검증 규칙 — 하나라도 비면 400이라, 인바디만 건너뛰고 프로필은 저장된 상태로 둔다
-        const missing = !record.measuredAt || !record.weightKg || !record.bmrKcal
-          || !record.skeletalMuscleMassKg || record.bodyFatMassKg == null;
-        if (missing) {
-          setError('인바디 항목(측정일·체중·기초대사량·골격근량·체지방량)을 모두 채워주세요. 프로필은 저장되었습니다.');
-          setSaving(false);
-          return;
-        }
-        await postInbody(record);
+      const record = {
+        measuredAt: toIsoDate(form.measuredAt),
+        weightKg: toNumber(form.weightKg),
+        bmrKcal: toNumber(form.bmrKcal),
+        skeletalMuscleMassKg: toNumber(form.skeletalMuscleMassKg),
+        bodyFatMassKg: toNumber(form.bodyFatMassKg),
+        bodyFatPct: toNumber(form.bodyFatPct), // 유일한 nullable 항목
+      };
+      // 명세 2-4 검증 규칙 — 하나라도 비면 400이라, 인바디만 건너뛰고 프로필은 저장된 상태로 둔다
+      const missing = !record.measuredAt || !record.weightKg || !record.bmrKcal
+        || !record.skeletalMuscleMassKg || record.bodyFatMassKg == null;
+      if (missing) {
+        setError('인바디 항목(측정일·체중·기초대사량·골격근량·체지방량)을 모두 채워주세요. 프로필은 저장되었습니다.');
+        setSaving(false);
+        return;
       }
+      await postInbody(record);
 
       setStep(2);
     } catch (err) {
@@ -447,8 +475,13 @@ export default function Signup() {
     <div className="min-h-screen bg-white">
       {/* 로고 + 스텝 */}
       <div className="max-w-[1000px] mx-auto px-8">
-        <div className="pt-6">
+        <div className="pt-6 flex items-center justify-between">
           <img src="/logo.png" alt="APEXAI" className="w-[90px] object-contain" />
+          {name && (
+            <span style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>
+              <span style={{ fontWeight: 700, color: '#161415' }}>{name}</span>님으로 로그인됨
+            </span>
+          )}
         </div>
         <StepHeader current={step} />
 
@@ -460,7 +493,9 @@ export default function Signup() {
                   <p style={{ ...mono, fontSize: 12, color: '#e2231a' }}>{error}</p>
                 </div>
               )}
-              <Step1 form={form} set={set} onNext={() => { setError(null); setStep(1); }} onLater={() => navigate('/')} />
+              {/* '나중에 설정' — 프로필 미완성 상태를 허용한다(database.md users 컬럼 nullable 근거).
+                  이미 로그인된 상태라 로그인 화면이 아니라 메인으로 보낸다. */}
+              <Step1 form={form} set={set} onNext={() => { setError(null); setStep(1); }} onLater={() => navigate('/chat')} />
             </>
           )}
           {step === 1 && (
