@@ -84,6 +84,45 @@ export const MUSCLE_GROUP = {
   유산소: 'CARDIO',
 };
 
+/** AI 응답 result.routine.exercises[].bodyPart — AI가 쓰는 9개 값 (백엔드 7개보다 세분화) */
+export const AI_BODY_PART = {
+  등: 'BACK',
+  가슴: 'CHEST',
+  이두: 'BICEPS',
+  삼두: 'TRICEPS',
+  어깨: 'SHOULDER',
+  코어: 'CORE',
+  엉덩이: 'GLUTES',
+  허벅지: 'THIGH',
+  종아리: 'CALF',
+};
+
+/**
+ * AI 부위(9) → workout_logs.muscle_group(7).
+ * DB CHECK가 7개라 AI 값을 그대로 저장하면 INSERT가 실패한다.
+ * 원래는 백엔드가 routineId로 채우는 게 맞지만, 세션 상세 응답에 routine의 id가 없어
+ * 프론트가 루틴을 기록으로 옮길 때는 직접 변환해 보낸다 (백엔드에 routineId 노출 요청 중).
+ */
+export const AI_BODY_PART_TO_MUSCLE_GROUP = {
+  BACK: 'BACK',
+  CHEST: 'CHEST',
+  SHOULDER: 'SHOULDER',
+  CORE: 'CORE',
+  BICEPS: 'ARM',
+  TRICEPS: 'ARM',
+  GLUTES: 'LOWER_BODY',
+  THIGH: 'LOWER_BODY',
+  CALF: 'LOWER_BODY',
+};
+
+/** '3~4세트' · '8~12회' 처럼 범위로 오는 문자열에서 첫 숫자를 뽑는다.
+ *  workout_logs의 plannedSets·reps는 integer라 변환이 필요하고, 범위의 하한을 택한다
+ *  (상한을 계획으로 잡으면 정상 수행도 미달로 찍히기 때문). */
+export function firstNumber(text) {
+  const match = String(text ?? '').match(/\d+/);
+  return match ? Number(match[0]) : null;
+}
+
 /** workout_logs 조회 응답의 status (서버가 완료율 80% 기준으로 계산해 내려준다) */
 export const WORKOUT_STATUS = { 완료: 'COMPLETED', 미완: 'INCOMPLETE' };
 

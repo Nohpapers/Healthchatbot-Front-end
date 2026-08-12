@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AiPanel from './AiPanel';
 import PresetDropdown from './PresetDropdown';
 import { AiAvatar, MessageBubble, UserBubble, TypingBubble } from './AiChatWidgets';
+import WorkoutLogModal from './WorkoutLogModal';
 import { postChat, getChatSessionDetail, ApiError } from '../api/client';
+import {
+  AI_BODY_PART, AI_BODY_PART_TO_MUSCLE_GROUP, MUSCLE_GROUP, labelOf, firstNumber,
+} from '../api/enums';
 import {
   mono, UPPER_BODY_OPTIONS, LOWER_BODY_OPTIONS, TIME_OPTIONS,
   CHAT_TYPE, buildPresetMessage, toSettings,
 } from '../constants';
 
 /* ─── 운동루틴 카드 ─── */
-function RoutineCard({ routine }) {
+function RoutineCard({ routine, onLog }) {
   if (!routine) return null;
   return (
     <div className="border border-[#b7bac4] p-4 mt-4">
@@ -31,6 +35,13 @@ function RoutineCard({ routine }) {
                   {ex.order}
                 </span>
                 <span className="font-bold" style={{ ...mono, fontSize: 14, color: '#161415' }}>{ex.name}</span>
+                {/* AI가 내려주는 부위(9개 값). 라벨이 없는 값이면 원문을 그대로 보여준다 */}
+                {ex.bodyPart && (
+                  <span className="px-2 py-[2px] shrink-0"
+                    style={{ ...mono, fontSize: 10, fontWeight: 700, background: '#ffd6d5', color: '#e2231a' }}>
+                    {labelOf(AI_BODY_PART, ex.bodyPart) ?? ex.bodyPart}
+                  </span>
+                )}
               </div>
               <p className="font-bold mt-3" style={{ ...mono, fontSize: 13, color: '#161415' }}>
                 {ex.sets} | {ex.reps}
@@ -50,6 +61,16 @@ function RoutineCard({ routine }) {
                   </span>
                 </div>
               )}
+              {/* 추천받은 운동을 수행 기록으로 남긴다. 세트/횟수는 '3~4세트'처럼 범위로 오므로
+                  하한을 계획값으로 채워 넣고, 실제 수행 세트는 사용자가 모달에서 입력한다. */}
+              <button
+                onClick={() => onLog(ex)}
+                className="flex items-center justify-center gap-1 border border-[#161415] h-[34px] hover:bg-[#f7f7f7] transition-colors"
+                style={{ ...mono, fontSize: 11, fontWeight: 700, color: '#161415' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>
+                기록에 추가
+              </button>
             </div>
           </div>
         ))}
@@ -59,6 +80,7 @@ function RoutineCard({ routine }) {
 }
 
 export default function CoachingAI() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionId = searchParams.get('sessionId');
 
@@ -66,6 +88,10 @@ export default function CoachingAI() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+
+  // '기록에 추가'로 열리는 운동 기록 모달의 초기값 (null이면 닫힌 상태)
+  const [logDraft, setLogDraft] = useState(null);
+  const [logSaved, setLogSaved] = useState(false);
 
   const [input, setInput] = useState('');
   const [upperBody, setUpperBody] = useState(null);
@@ -137,6 +163,23 @@ export default function CoachingAI() {
 
   const hasPreset = Boolean(upperBody || lowerBody || duration);
 
+  /**
+   * 추천받은 운동 하나를 수행 기록 입력으로 넘긴다.
+   * AI의 부위(9개)를 workout_logs의 7개 값으로 변환해 모달의 부위 선택을 미리 맞춘다.
+   * routineId는 세션 상세 응답에 루틴 id가 없어 보낼 수 없다 — 백엔드에 노출 요청 중이며,
+   * 그때까지는 자유 입력으로 저장되고 부위는 프론트가 변환한 값이 쓰인다.
+   */
+  function openLogDraft(exercise) {
+    const code = AI_BODY_PART_TO_MUSCLE_GROUP[exercise.bodyPart];
+    setLogSaved(false);
+    setLogDraft({
+      exerciseName: exercise.name ?? '',
+      muscleGroup: labelOf(MUSCLE_GROUP, code) ?? '가슴',
+      plannedSets: firstNumber(exercise.sets) ?? '',
+      reps: firstNumber(exercise.reps) ?? '',
+    });
+  }
+
   /** [프리셋 적용] 클릭 시 선택해둔 프리셋 전체를 백엔드로 전송 (별도 설정 API가 없어 /api/chat의 settings로 전달) */
   function applyPresets() {
     if (sending || loading || !hasPreset) return;
@@ -164,7 +207,7 @@ export default function CoachingAI() {
                           <AiAvatar icon="smart_toy" tag="COACHING" />
                           <MessageBubble>{msg.content}</MessageBubble>
                         </div>
-                        <RoutineCard routine={msg.result?.routine} />
+                        <RoutineCard routine={msg.result?.routine} onLog={openLogDraft} />
                       </>
                     ) : (
                       <UserBubble>{msg.content}</UserBubble>
@@ -238,6 +281,27 @@ export default function CoachingAI() {
 
         <AiPanel />
       </div>
+
+      {logDraft && (
+        <WorkoutLogModal
+          initial={logDraft}
+          onClose={() => setLogDraft(null)}
+          onSaved={() => { setLogDraft(null); setLogSaved(true); }}
+        />
+      )}
+
+      {/* 저장 후 알림 — 종합 데이터로 바로 넘어갈 수 있게 한다 */}
+      {logSaved && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-[#161415] px-5 py-3">
+          <span style={{ ...mono, fontSize: 12, color: '#fff' }}>운동 기록에 저장했습니다.</span>
+          <button onClick={() => navigate('/dashboard')}
+            style={{ ...mono, fontSize: 12, fontWeight: 700, color: '#ff8785' }}>
+            종합 데이터 보기
+          </button>
+          <button onClick={() => setLogSaved(false)}
+            className="material-symbols-outlined text-white" style={{ fontSize: 16 }}>close</button>
+        </div>
+      )}
     </div>
   );
 }
