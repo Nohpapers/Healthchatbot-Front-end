@@ -73,6 +73,20 @@ export const COACH_TONE = {
   '건조한 안내': 'CONCISE',
 };
 
+/** workout_logs.muscle_group — api.md 3.5 / database.md CHECK와 1:1. nullable(미분류 가능) */
+export const MUSCLE_GROUP = {
+  가슴: 'CHEST',
+  등: 'BACK',
+  어깨: 'SHOULDER',
+  팔: 'ARM',
+  하체: 'LOWER_BODY',
+  코어: 'CORE',
+  유산소: 'CARDIO',
+};
+
+/** workout_logs 조회 응답의 status (서버가 완료율 80% 기준으로 계산해 내려준다) */
+export const WORKOUT_STATUS = { 완료: 'COMPLETED', 미완: 'INCOMPLETE' };
+
 /** user_notification_settings.receive_channel */
 export const RECEIVE_CHANNEL = { '앱 알림': 'APP', 이메일: 'EMAIL', '문자 알림': 'SMS' };
 

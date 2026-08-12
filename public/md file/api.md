@@ -26,6 +26,8 @@ API 설명은 이 문서를 가리키기만 한다. 스키마는 `database.md`/`
 | `previousWorkout` | `UPPER_BODY`, `LOWER_BODY` |
 | `dayOfWeek` | `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN` |
 | `slot` (끼니) | `BREAKFAST`, `LUNCH`, `DINNER` |
+| `muscleGroup` (운동 수행 기록) | `CHEST`, `BACK`, `SHOULDER`, `ARM`, `LOWER_BODY`, `CORE`, `CARDIO` |
+| `status` (운동 수행 기록) | `COMPLETED`, `INCOMPLETE` — DB 저장값이 아니라 조회 시점에 계산되는 값 (3.6 참고) |
 
 ### 에러 응답
 
@@ -49,9 +51,12 @@ Spring Boot 내장 **RFC 7807 ProblemDetail**을 그대로 쓴다. 커스텀 에
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | GET | `/api/inbody/recent` | My Recent Inbody Data 패널 |
+| GET | `/api/inbody` | 인바디 측정 이력 전체 조회 |
 | POST | `/api/chat` | 코칭/영양 채팅 (메인 입력창 + 첫 인사말 포함) |
 | GET | `/api/chat/sessions` | 최근 채팅내역 목록 |
 | GET | `/api/chat/sessions/{sessionId}` | 세션 상세 (메시지 + 결과 전체) |
+| POST | `/api/workout-logs` | 운동 수행 기록 저장 (AI 루틴 수행 또는 자유 입력) |
+| GET | `/api/workout-logs` | 운동 수행 기록 이력 전체 조회 |
 
 메인 화면 상단의 "ooo님 반갑습니다 / 지난 루틴을 기반하여 오늘은 상체 하시는 날입니다"는 별도
 프로필 조회 API가 없다. **이것도 채팅의 일부** — 새 세션의 첫 AI 메시지이며 `POST /api/chat`으로
@@ -79,6 +84,28 @@ Spring Boot 내장 **RFC 7807 ProblemDetail**을 그대로 쓴다. 커스텀 에
 실제로 발생할 수 있다. 프론트는 "데이터 없음" 화면을 준비해야 한다).
 
 막대 그래프의 기준 구간(정상 범위)은 프론트가 렌더링 시 계산하는 것으로 가정한다.
+
+### 3.1b `GET /api/inbody`
+
+인바디 측정 이력 전체 조회. 추이 그래프 등 대시보드에서 여러 건이 필요할 때 사용한다.
+페이지네이션 없음 — 전체 반환.
+
+**응답 `200 OK`**
+```json
+[
+  {
+    "measuredAt": "2026-06-20",
+    "weightKg": 70.0,
+    "skeletalMuscleMassKg": 32.0,
+    "bodyFatMassKg": 12.0,
+    "bodyFatPct": 17.0,
+    "bmrKcal": 1650
+  }
+]
+```
+
+`measuredAt` 내림차순(최신순)으로 정렬한다. 기록이 없으면 `200`과 함께 빈 배열 — 3.1과 달리
+404가 아니다(이력 조회는 "없음"이 곧 에러가 아닌 정상 상태).
 
 ### 3.2 `POST /api/chat`
 
@@ -151,18 +178,32 @@ DB에는 `result`를 통째로 저장하지 않고 정규화된 테이블(`routi
 
 ### 3.3 `GET /api/chat/sessions`
 
-좌측 "최근 채팅내역" 목록. `type` 쿼리 파라미터로 코칭/영양 탭을 구분한다.
+좌측 "최근 채팅내역" 목록. `type` 쿼리 파라미터로 코칭/영양 탭을 구분한다. 페이지네이션은
+Spring Data의 기본 `Page` 응답 형식을 그대로 쓴다.
 
-**요청**: `GET /api/chat/sessions?type=COACHING`
+**요청**: `GET /api/chat/sessions?type=COACHING&page=0&size=20`
+
+| 파라미터 | 제약 |
+|---|---|
+| `type` | 필수, `COACHING` \| `NUTRITION` |
+| `page` | 선택, 0부터 시작, 기본값 `0` |
+| `size` | 선택, 기본값 `20` |
 
 **응답 `200 OK`**
 ```json
-[
-  { "sessionId": "3f2a1c34-...", "type": "COACHING", "title": "오늘 가슴 위주로 하고 싶어", "createdAt": "2026-07-16T09:00:00+09:00" }
-]
+{
+  "content": [
+    { "sessionId": "3f2a1c34-...", "type": "COACHING", "title": "오늘 가슴 위주로 하고 싶어", "createdAt": "2026-07-16T09:00:00+09:00" }
+  ],
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
 ```
 
-정렬은 `createdAt` 내림차순 (세션 생성순 — 미결 사항 참고). 기록이 없으면 빈 배열.
+정렬은 `createdAt` 내림차순(세션 생성순 — 정렬 기준 자체는 여전히 미결 사항, 5장 참고).
+기록이 없으면 `content`가 빈 배열.
 
 ### 3.4 `GET /api/chat/sessions/{sessionId}`
 
@@ -181,6 +222,73 @@ DB에는 `result`를 통째로 저장하지 않고 정규화된 테이블(`routi
 ```
 
 **응답 `404 Not Found`** — `sessionId`가 존재하지 않음.
+
+### 3.5 `POST /api/workout-logs`
+
+운동 수행 기록 저장. AI 루틴을 수행한 기록(`routineId` 있음)과 사용자 자유 입력
+(`routineId` 없음) 둘 다 이 엔드포인트 하나로 받는다.
+
+**요청**
+```json
+{
+  "performedAt": "2026-08-12",
+  "exerciseName": "벤치프레스",
+  "muscleGroup": "CHEST",
+  "plannedSets": 4,
+  "completedSets": 3,
+  "reps": 10,
+  "weightKg": 60.0,
+  "routineId": "3f2a1c34-..."
+}
+```
+
+| 필드 | 제약 |
+|---|---|
+| `performedAt` | 필수 |
+| `exerciseName` | 필수 |
+| `muscleGroup` | 선택. `CHEST`\|`BACK`\|`SHOULDER`\|`ARM`\|`LOWER_BODY`\|`CORE`\|`CARDIO` |
+| `plannedSets` | 선택, 양수 |
+| `completedSets` | 선택, 0 이상 |
+| `reps` | 선택, 양수 |
+| `weightKg` | 선택, 0 이상 |
+| `routineId` | 선택. 있으면 AI 루틴 수행 기록으로 연결, 없으면 자유 입력 |
+
+**응답 `201 Created`** — 3.6의 배열 원소와 동일한 모양 하나.
+
+**에러**
+
+| 상태 | 조건 |
+|---|---|
+| `400` | 필수 필드 누락/제약 위반, `routineId`가 다른 유저의 루틴을 가리킴 |
+| `404` | `routineId`가 존재하지 않는 루틴을 가리킴 |
+
+### 3.6 `GET /api/workout-logs`
+
+로그인 유저의 운동 수행 기록 이력 전체 조회. 페이지네이션 없음. `performedAt` 내림차순.
+
+**응답 `200 OK`**
+```json
+[
+  {
+    "id": "9c1e2b7a-...",
+    "routineId": "3f2a1c34-...",
+    "performedAt": "2026-08-12",
+    "exerciseName": "벤치프레스",
+    "muscleGroup": "CHEST",
+    "plannedSets": 4,
+    "completedSets": 3,
+    "reps": 10,
+    "weightKg": 60.0,
+    "completionRate": 0.75,
+    "status": "INCOMPLETE"
+  }
+]
+```
+
+`completionRate`/`status`는 DB에 저장된 값이 아니라 `completedSets / plannedSets`로 조회
+시점에 계산된다 — 완료 기준(현재 80%)이 바뀌어도 과거 기록을 재계산할 필요가 없다.
+`plannedSets`가 없거나 0이면(자유 입력) `completionRate`는 `1`, `status`는 `COMPLETED`로
+고정한다. 기록이 없으면 빈 배열.
 
 ## 4. 백엔드 → AI 서버
 
@@ -283,4 +391,3 @@ AI 응답이 동기이므로(`architecture.md` 1장 확정 사항) 프론트 요
   기기 연동 값인지 미정. 현재는 3.1의 `GET`만 있다.
 - **버튼 동작**: "진행시켜", "설정 초기화", "7월 식단표 제작", "식단표 수정", "종합 데이터" —
   각각 별도 엔드포인트가 필요한지, 있다면 요청/응답이 무엇인지 미정.
-- **`GET /api/chat/sessions` 페이지네이션**: MVP는 전체 반환으로 가정. 목록이 많아지면 필요.

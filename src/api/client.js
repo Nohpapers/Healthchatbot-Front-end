@@ -86,14 +86,60 @@ export function postChat({ type, message = null, sessionId = null, settings = nu
   });
 }
 
-/** GET /api/chat/sessions?type=COACHING|NUTRITION */
-export function getChatSessions(type) {
-  return request(`/chat/sessions?type=${encodeURIComponent(type)}`, { method: 'GET' });
+/**
+ * GET /api/chat/sessions?type=&page=&size= — api.md 3.3.
+ * 응답이 Spring Data의 Page 형식이라(content/totalPages/number) 화면이 쓰기 쉬운 모양으로 풀어준다.
+ * 서버가 배열을 주던 이전 계약도 함께 받아준다(배포 시점 차이로 둘 중 하나가 올 수 있다).
+ */
+export async function getChatSessions(type, { page = 0, size = 20 } = {}) {
+  const query = `type=${encodeURIComponent(type)}&page=${page}&size=${size}`;
+  const body = await request(`/chat/sessions?${query}`, { method: 'GET' });
+
+  if (Array.isArray(body)) {
+    return { items: body, page: 0, totalPages: 1, total: body.length, hasNext: false };
+  }
+  const items = body?.content ?? [];
+  const number = body?.number ?? page;
+  const totalPages = body?.totalPages ?? 1;
+  return {
+    items,
+    page: number,
+    totalPages,
+    total: body?.totalElements ?? items.length,
+    // last가 오면 그걸 믿고, 없으면 페이지 번호로 판단한다
+    hasNext: body?.last != null ? !body.last : number + 1 < totalPages,
+  };
+}
+
+/** 세션 총 개수만 필요할 때 (대시보드 카드) — 첫 페이지의 totalElements만 읽고 끝낸다 */
+export async function countChatSessions(type) {
+  const res = await getChatSessions(type, { page: 0, size: 1 });
+  return res.total;
 }
 
 /** GET /api/chat/sessions/{sessionId} */
 export function getChatSessionDetail(sessionId) {
   return request(`/chat/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' });
+}
+
+/**
+ * GET /api/inbody — 측정 이력 전체 (api.md 3.1b).
+ * measuredAt 내림차순으로 오고, 기록이 없으면 404가 아니라 빈 배열이다(recent와 다름).
+ * 추이 그래프는 과거→현재 순서가 필요해 오름차순으로 뒤집어 돌려준다.
+ */
+export async function getInbodyHistory() {
+  const list = await request('/inbody', { method: 'GET' });
+  return [...(list ?? [])].sort((a, b) => String(a.measuredAt).localeCompare(String(b.measuredAt)));
+}
+
+/** GET /api/workout-logs — 운동 수행 기록 전체, performedAt 내림차순 (api.md 3.6) */
+export function getWorkoutLogs() {
+  return request('/workout-logs', { method: 'GET' });
+}
+
+/** POST /api/workout-logs — 기록 저장. routineId가 있으면 AI 루틴 수행, 없으면 자유 입력 (3.5) */
+export function createWorkoutLog(log) {
+  return request('/workout-logs', { method: 'POST', body: JSON.stringify(log) });
 }
 
 /* ── 프로필 · 회원가입 (signup_profile_api_spec.md 2장) ── */

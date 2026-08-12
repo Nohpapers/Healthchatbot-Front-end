@@ -36,21 +36,37 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // 페이지네이션 (api.md 3.3 — page 0부터, Page 응답)
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+
+  // 탭(코칭/영양)을 바꾸거나 목록을 접으면 처음 페이지로 되돌린다
+  useEffect(() => {
+    setSessions([]);
+    setPage(0);
+    setHasNext(false);
+  }, [type]);
+
   useEffect(() => {
     if (!historyOpen) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    getChatSessions(type)
-      .then((list) => !cancelled && setSessions(list))
+    getChatSessions(type, { page })
+      .then((res) => {
+        if (cancelled) return;
+        // page 0은 교체, 그 이후는 이어붙이기 ("더보기")
+        setSessions((prev) => (page === 0 ? res.items : [...prev, ...res.items]));
+        setHasNext(res.hasNext);
+      })
       .catch((err) => !cancelled && setError(err instanceof ApiError ? err.message : '목록을 불러오지 못했습니다.'))
       .finally(() => !cancelled && setLoading(false));
 
     return () => {
       cancelled = true;
     };
-  }, [historyOpen, type]);
+  }, [historyOpen, type, page]);
 
   function goToSession(sessionId) {
     const path = type === CHAT_TYPE.NUTRITION ? '/nutrition' : '/coaching';
@@ -116,6 +132,15 @@ export default function Sidebar() {
                 <div style={{ ...mono, fontSize: 9, color: '#b7bac4' }}>{formatDateTime(s.createdAt)}</div>
               </button>
             ))}
+            {hasNext && !loading && (
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                className="px-2 py-2 hover:bg-[#f7f7f7] transition-colors"
+                style={{ ...mono, fontSize: 11, color: '#6b6f76', fontWeight: 700 }}
+              >
+                더보기
+              </button>
+            )}
           </div>
         )}
 
