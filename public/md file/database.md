@@ -285,6 +285,9 @@ create index idx_inbody_user_measured
 - 인덱스는 `GET /api/inbody/recent`의 "유저의 최신 1건" 조회 패턴에 대응한다 (`where user_id = ? order by measured_at desc limit 1`).
 - 체중은 이 테이블에만 둔다 — 회원가입 시 입력한 키·체중도 인바디 측정값의 일부로 여기에 저장하며, users에 중복 보관하지 않는다.
 - 화면 항목은 골격근량·체지방량·체지방률·기초대사량 4종이다 (BMI·내장지방·허리둘레는 미포함).
+- 인바디 입력은 사용자 직접 입력으로 확정, 회원가입2에서 측정값을 입력받는다(`POST /api/inbody`, `api.md` 3.1c).
+  "인바디 없이 시작" 옵션은 제거되어 인바디는 항상 입력된다 — 그래서 `weight_kg`/`bmr_kcal`/
+  `skeletal_muscle_mass_kg`/`body_fat_mass_kg`가 다른 프로필 컬럼과 달리 not null이다.
 
 ### user_preferences
 
@@ -562,8 +565,6 @@ DDL 적용은 MVP에서는 DB 클라이언트(psql/pgAdmin 등)에서 직접 실
 
 ## 7. 미결 사항
 
-- **인바디 입력 경로** — 사용자 직접 입력으로 확정(회원가입2에서 측정값 입력). `POST /api/inbody` 신설 예정.
-  "인바디 없이 시작" 옵션은 제거되어 인바디는 항상 입력된다(관련 컬럼 not null 유지).
 - **`unique (user_id, measured_at)`** — 하루 1회 측정을 가정했다. 하루 여러 번 측정을 허용해야 하면
   이 제약을 빼고 `measured_at`을 `timestamptz`로 바꾼다.
 - **`chat_sessions.title` 생성 규칙 미정** — 첫 사용자 메시지를 잘라 쓰는 방식을 가정하고 nullable로 뒀다.

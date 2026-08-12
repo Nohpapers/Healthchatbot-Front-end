@@ -52,6 +52,7 @@ Spring Boot 내장 **RFC 7807 ProblemDetail**을 그대로 쓴다. 커스텀 에
 |---|---|---|
 | GET | `/api/inbody/recent` | My Recent Inbody Data 패널 |
 | GET | `/api/inbody` | 인바디 측정 이력 전체 조회 |
+| POST | `/api/inbody` | 인바디 측정 기록 저장 (회원가입2 + 재측정) |
 | POST | `/api/chat` | 코칭/영양 채팅 (메인 입력창 + 첫 인사말 포함) |
 | GET | `/api/chat/sessions` | 최근 채팅내역 목록 |
 | GET | `/api/chat/sessions/{sessionId}` | 세션 상세 (메시지 + 결과 전체) |
@@ -76,12 +77,12 @@ Spring Boot 내장 **RFC 7807 ProblemDetail**을 그대로 쓴다. 커스텀 에
   "weightKg": 70.0,
   "skeletalMuscleMassKg": 32.0,
   "bodyFatMassKg": 12.0,
+  "bodyFatPct": 17.0,
   "bmrKcal": 1650
 }
 ```
 
-**응답 `404 Not Found`** — 측정 기록이 아직 하나도 없을 때 (인바디 입력 경로가 미결이라 이 상태가
-실제로 발생할 수 있다. 프론트는 "데이터 없음" 화면을 준비해야 한다).
+**응답 `404 Not Found`** — 측정 기록이 아직 하나도 없을 때 (프론트는 "데이터 없음" 화면을 준비해야 한다).
 
 막대 그래프의 기준 구간(정상 범위)은 프론트가 렌더링 시 계산하는 것으로 가정한다.
 
@@ -106,6 +107,41 @@ Spring Boot 내장 **RFC 7807 ProblemDetail**을 그대로 쓴다. 커스텀 에
 
 `measuredAt` 내림차순(최신순)으로 정렬한다. 기록이 없으면 `200`과 함께 빈 배열 — 3.1과 달리
 404가 아니다(이력 조회는 "없음"이 곧 에러가 아닌 정상 상태).
+
+### 3.1c `POST /api/inbody`
+
+인바디 측정 기록 저장. 회원가입2(인바디 측정 입력)와 이후 재측정 둘 다 이 엔드포인트를 쓴다
+(`signup_profile_api_spec.md` 2-4 참고).
+
+**요청**
+```json
+{
+  "measuredAt": "2026-06-20",
+  "weightKg": 70.0,
+  "bmrKcal": 1650,
+  "skeletalMuscleMassKg": 32.0,
+  "bodyFatMassKg": 12.0,
+  "bodyFatPct": 17.0
+}
+```
+
+| 필드 | 제약 |
+|---|---|
+| `measuredAt` | 필수 |
+| `weightKg` | 필수, 양수 |
+| `bmrKcal` | 필수, 양수 |
+| `skeletalMuscleMassKg` | 필수, 양수 |
+| `bodyFatMassKg` | 필수, 0 이상 |
+| `bodyFatPct` | 선택, 0 이상 |
+
+**응답 `201 Created`** — 3.1b의 배열 원소와 동일한 모양 하나.
+
+**에러**
+
+| 상태 | 조건 |
+|---|---|
+| `400` | 필수 필드 누락/제약 위반 |
+| `409` | 같은 유저·같은 `measuredAt`의 기록이 이미 있음 |
 
 ### 3.2 `POST /api/chat`
 
@@ -387,7 +423,5 @@ AI 응답이 동기이므로(`architecture.md` 1장 확정 사항) 프론트 요
 아래는 API 명세에 직접 영향을 주지만 아직 답을 받지 못한 것들이다. 확정되는 대로 이 문서와
 `architecture.md`/`database.md`를 함께 갱신한다.
 
-- **인바디 쓰기 경로**: `POST /api/inbody`가 필요한지, 필요하다면 요청 바디가 사용자 직접 입력인지
-  기기 연동 값인지 미정. 현재는 3.1의 `GET`만 있다.
 - **버튼 동작**: "진행시켜", "설정 초기화", "7월 식단표 제작", "식단표 수정", "종합 데이터" —
   각각 별도 엔드포인트가 필요한지, 있다면 요청/응답이 무엇인지 미정.

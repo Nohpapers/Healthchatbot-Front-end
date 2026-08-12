@@ -390,16 +390,25 @@ export default function Dashboard() {
     [logs, prevRange, applyFilters, inRange]
   );
 
-  /** 집계 — 총 운동 횟수는 '운동한 날 수'(performedAt distinct) 기준 */
+  /**
+   * 집계 규칙 (백엔드와 합의된 정의)
+   *  - 총 운동 횟수 = performedAt DISTINCT (운동한 '날 수'). 종목을 쪼개 기록해도 부풀지 않는다.
+   *  - 완료율 = status가 COMPLETED인 기록 수 / 전체 기록 수.
+   *    세트 합산 방식이 아니라 기록 수 기준인 이유는, 표에 보이는 완료/미완 배지와 숫자가
+   *    일치해야 사용자가 대조할 수 있기 때문이다.
+   */
   const summarize = useCallback((list) => {
     const days = new Set(list.map((l) => l.performedAt));
-    const completedSets = list.reduce((sum, l) => sum + (l.completedSets ?? 0), 0);
-    const plannedSets = list.reduce((sum, l) => sum + (l.plannedSets ?? l.completedSets ?? 0), 0);
+    const completedCount = list.filter((l) => l.status === 'COMPLETED').length;
     return {
       dayCount: days.size,
       exerciseCount: list.length,
-      completedSets,
-      completionRate: plannedSets ? completedSets / plannedSets : 0,
+      completedSets: list.reduce((sum, l) => sum + (l.completedSets ?? 0), 0),
+      completedCount,
+      completionRate: list.length ? completedCount / list.length : 0,
+      // 계획 세트가 있는 기록만 센다 — 자유 입력은 서버가 항상 COMPLETED로 주므로
+      // 완료율이 100%에 가깝게 쏠린다. 그 사실을 화면에 밝히기 위한 값이다.
+      plannedCount: list.filter((l) => l.plannedSets != null).length,
     };
   }, []);
 
@@ -579,7 +588,10 @@ export default function Dashboard() {
                     sub={setDelta != null ? `${setDelta > 0 ? '+' : ''}${setDelta}% 이전 기간 대비` : periodLabel}
                     subAccent={setDelta != null && setDelta > 0} />
                   <StatCard icon="task_alt" label="운동 완료율" value={pct(current.completionRate)}
-                    sub={`기록 ${current.exerciseCount}건 기준`} />
+                    sub={`${current.completedCount}/${current.exerciseCount}건 완료`
+                      + (current.plannedCount < current.exerciseCount
+                        ? ` (자유입력 ${current.exerciseCount - current.plannedCount}건 포함)`
+                        : '')} />
                   <StatCard icon="local_fire_department" label="연속 운동"
                     value={`${streak.current}일`} sub={`최고 ${streak.best}일`} subAccent={streak.current > 0} />
                   <StatCard icon="forum" label="AI 요청"
