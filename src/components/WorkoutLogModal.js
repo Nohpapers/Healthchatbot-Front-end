@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { mono } from '../constants';
 import { createWorkoutLog, ApiError } from '../api/client';
-import { MUSCLE_GROUP } from '../api/enums';
+import { MUSCLE_GROUP, formatDateInput } from '../api/enums';
 
 /* 운동 수행 기록 입력 (POST /api/workout-logs — api.md 3.5)
  * 종합 데이터의 '새 운동 기록'과 코칭 화면의 '기록에 추가'가 함께 쓴다.
@@ -69,10 +69,13 @@ export default function WorkoutLogModal({ initial, onClose, onSaved }) {
     }
   }
 
-  const field = (label, key, props = {}) => (
+  /** date: true면 타이핑 중 yyyy-mm-dd로 자동 정리 */
+  const field = (label, key, { date, ...props } = {}) => (
     <label className="flex flex-col gap-2">
       <span style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>{label}</span>
-      <input value={form[key] ?? ''} onChange={(e) => set({ [key]: e.target.value })} {...props}
+      <input value={form[key] ?? ''}
+        onChange={(e) => set({ [key]: date ? formatDateInput(e.target.value) : e.target.value })}
+        {...(date ? { inputMode: 'numeric', maxLength: 10 } : {})} {...props}
         className="border border-[#e5e7eb] h-[42px] px-3 outline-none focus:border-[#161415] transition-colors"
         style={{ ...mono, fontSize: 13, color: '#161415' }} />
     </label>
@@ -87,7 +90,7 @@ export default function WorkoutLogModal({ initial, onClose, onSaved }) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 mt-5">
-          {field('운동일 *', 'performedAt', { placeholder: 'YYYY-MM-DD' })}
+          {field('운동일 *', 'performedAt', { date: true, placeholder: 'YYYY-MM-DD' })}
           {field('운동명 *', 'exerciseName', { placeholder: '벤치프레스' })}
         </div>
 

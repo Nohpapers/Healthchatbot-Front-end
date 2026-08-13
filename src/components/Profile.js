@@ -14,7 +14,7 @@ import { logout } from '../api/auth';
 import {
   GENDER, GOAL, EXPERIENCE_LEVEL, WORKOUT_DURATION, INJURY_PART, WORKOUT_TYPE,
   RECOMMENDATION_STYLE, EXPLANATION_LEVEL, COACH_TONE, RECEIVE_CHANNEL,
-  toEnums, labelOf, toFrequency, toIsoDate, toNumber,
+  toEnums, labelOf, toFrequency, toIsoDate, toNumber, formatDateInput,
 } from '../api/enums';
 
 /* ─── 재사용 토글 스위치 ─── */
@@ -44,16 +44,18 @@ function Chip({ active, onClick, children, variant = 'pink' }) {
   );
 }
 
-/* ─── 입력 필드 (제어 컴포넌트 — 저장 시 그대로 PATCH 바디가 된다) ─── */
-function Field({ label, value, onChange, readOnly, placeholder }) {
+/* ─── 입력 필드 (제어 컴포넌트 — 저장 시 그대로 PATCH 바디가 된다)
+ *     date를 주면 타이핑하는 동안 yyyy-mm-dd 형식으로 자동 정리한다 ─── */
+function Field({ label, value, onChange, readOnly, placeholder, date }) {
   return (
     <label className="flex flex-col gap-2">
       <span style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>{label}</span>
       <input
         value={value ?? ''}
-        placeholder={placeholder}
+        placeholder={date ? 'YYYY-MM-DD' : placeholder}
         readOnly={readOnly}
-        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        onChange={onChange ? (e) => onChange(date ? formatDateInput(e.target.value) : e.target.value) : undefined}
+        {...(date ? { inputMode: 'numeric', maxLength: 10 } : {})}
         className="border border-[#e5e7eb] h-[42px] px-3 outline-none focus:border-[#161415] transition-colors read-only:bg-[#f7f7f7] read-only:text-[#6b6f76]"
         style={{ ...mono, fontSize: 13, color: '#161415' }} />
     </label>
@@ -335,7 +337,7 @@ export default function Profile() {
                     {/* 이름은 소셜 로그인에서 받은 값 — 쓰기 API가 없어 읽기 전용 (명세 2-2) */}
                     <Field label="이름 (로그인 계정 기준)" value={form.name} readOnly />
                     <Field label="닉네임" value={form.nickname} onChange={(v) => set({ nickname: v })} placeholder="닉네임" />
-                    <Field label="생년월일" value={form.birthDate} onChange={(v) => set({ birthDate: v })} placeholder="YYYY-MM-DD" />
+                    <Field label="생년월일" date value={form.birthDate} onChange={(v) => set({ birthDate: v })} />
                     <Field label="성별" value={form.gender} readOnly placeholder="회원가입에서 설정" />
                     <Field label="이메일" value={form.email} onChange={(v) => set({ email: v })} placeholder="you@example.com" />
                     <Field label="휴대전화 번호" value={form.phone} onChange={(v) => set({ phone: v })} placeholder="010-0000-0000" />
@@ -374,7 +376,7 @@ export default function Profile() {
                   </div>
                   <div className="grid grid-cols-2 gap-5 mt-6">
                     <Field label="목표 체중 (kg)" value={form.targetWeightKg} onChange={(v) => set({ targetWeightKg: v })} />
-                    <Field label="목표 달성 예정일" value={form.goalTargetDate} onChange={(v) => set({ goalTargetDate: v })} placeholder="YYYY-MM-DD" />
+                    <Field label="목표 달성 예정일" date value={form.goalTargetDate} onChange={(v) => set({ goalTargetDate: v })} />
                   </div>
                 </Section>
 

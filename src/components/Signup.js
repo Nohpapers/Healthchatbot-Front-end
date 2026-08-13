@@ -4,7 +4,7 @@ import { mono } from '../constants';
 import { getMe, putMe, putPreferences, postInbody, ApiError } from '../api/client';
 import {
   GENDER, GOAL, EXPERIENCE_LEVEL, WORKOUT_DURATION, INJURY_PART,
-  toEnums, labelOf, toFrequency, toIsoDate, toNumber,
+  toEnums, labelOf, toFrequency, toIsoDate, toNumber, formatDateInput,
 } from '../api/enums';
 
 const STEPS = [
@@ -39,8 +39,9 @@ function StepHeader({ current }) {
   );
 }
 
-/* ─── 라벨 + 입력 (제어 컴포넌트 — 값이 API 요청으로 그대로 나간다) ─── */
-function Input({ label, required, placeholder, value, onChange, unit }) {
+/* ─── 라벨 + 입력 (제어 컴포넌트 — 값이 API 요청으로 그대로 나간다)
+ *     date를 주면 타이핑하는 동안 yyyy-mm-dd 형식으로 자동 정리한다 ─── */
+function Input({ label, required, placeholder, value, onChange, unit, date }) {
   return (
     <label className="flex flex-col gap-2">
       {label && (
@@ -49,7 +50,11 @@ function Input({ label, required, placeholder, value, onChange, unit }) {
         </span>
       )}
       <div className="relative">
-        <input placeholder={placeholder} value={value ?? ''} onChange={(e) => onChange(e.target.value)}
+        <input
+          placeholder={date ? 'YYYY-MM-DD' : placeholder}
+          value={value ?? ''}
+          onChange={(e) => onChange(date ? formatDateInput(e.target.value) : e.target.value)}
+          {...(date ? { inputMode: 'numeric', maxLength: 10 } : {})}
           className="w-full border border-[#e5e7eb] bg-[#fafafa] h-[46px] px-3 outline-none focus:border-[#161415] transition-colors"
           style={{ ...mono, fontSize: 13, color: '#161415' }} />
         {unit && <span className="absolute right-3 top-1/2 -translate-y-1/2" style={{ ...mono, fontSize: 12, color: '#6b6f76' }}>{unit}</span>}
@@ -139,7 +144,7 @@ function Step1({ form, set, onNext, onLater }) {
           <Input label="닉네임" required placeholder="닉네임을 입력해 주세요"
             value={form.nickname} onChange={(v) => set({ nickname: v })} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="생년월일" required placeholder="YYYY-MM-DD"
+            <Input label="생년월일" required date
               value={form.birthDate} onChange={(v) => set({ birthDate: v })} />
             <Input label="이메일" placeholder="you@example.com"
               value={form.email} onChange={(v) => set({ email: v })} />
@@ -167,7 +172,7 @@ function Step1({ form, set, onNext, onLater }) {
           <div className="grid grid-cols-2 gap-4">
             <Input label="목표 체중" placeholder="62" unit="kg"
               value={form.targetWeightKg} onChange={(v) => set({ targetWeightKg: v })} />
-            <Input label="목표 달성 예정일" placeholder="YYYY-MM-DD"
+            <Input label="목표 달성 예정일" date
               value={form.goalTargetDate} onChange={(v) => set({ goalTargetDate: v })} />
           </div>
         </div>
@@ -251,7 +256,7 @@ function Step2({ form, set, onSubmit, onPrev, saving, error }) {
           inbody_records의 체중·기초대사량·골격근량·체지방량이 not null이라 비우면 저장 자체가 안 된다. */}
       <Card title="측정 기본정보" sub="* 개인정보 설정에서 입력한 키와 체중이 자동으로 불러와졌습니다.">
         <div className="grid grid-cols-3 gap-4">
-          <Input label="측정일" required value={form.measuredAt} onChange={(v) => set({ measuredAt: v })} />
+          <Input label="측정일" required date value={form.measuredAt} onChange={(v) => set({ measuredAt: v })} />
           <Input label="키" unit="cm" value={form.heightCm} onChange={(v) => set({ heightCm: v })} />
           <Input label="체중" required unit="kg" value={form.weightKg} onChange={(v) => set({ weightKg: v })} />
         </div>

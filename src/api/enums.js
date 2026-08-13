@@ -146,6 +146,32 @@ export function toEnums(table, labels) {
   return (labels ?? []).map((l) => table[l]).filter(Boolean);
 }
 
+/**
+ * 날짜 입력칸의 실시간 전처리 — 타이핑하는 동안 'yyyy-MM-dd' 모양을 유지한다.
+ * 숫자만 남기고 4·6자리 뒤에 '-'를 넣으며, 8자리를 넘으면 자른다.
+ * '1998.05.12'나 '1998/05/12'를 붙여넣어도 구분자가 정규화되고,
+ * 지우기(백스페이스) 시에는 숫자가 줄어들면서 '-'도 자연히 사라진다.
+ * 월/일은 두 자리가 채워진 순간에만 범위로 눌러준다(1~12, 1~31) — 입력 중에는 건드리지 않는다.
+ */
+export function formatDateInput(value) {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 8);
+  const year = digits.slice(0, 4);
+  let month = digits.slice(4, 6);
+  let day = digits.slice(6, 8);
+
+  const clamp = (part, min, max) => {
+    if (part.length < 2) return part;
+    const n = Math.min(Math.max(Number(part), min), max);
+    return String(n).padStart(2, '0');
+  };
+  month = clamp(month, 1, 12);
+  day = clamp(day, 1, 31);
+
+  if (digits.length <= 4) return year;
+  if (digits.length <= 6) return `${year}-${month}`;
+  return `${year}-${month}-${day}`;
+}
+
 /** '1998.05.12' · '1998-05-12' · '19980512' → 'yyyy-MM-dd' (api.md 날짜 포맷). 실패 시 null */
 export function toIsoDate(input) {
   if (!input) return null;
