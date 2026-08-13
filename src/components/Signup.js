@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mono } from '../constants';
-import { getMe, putMe, putPreferences, postInbody, ApiError } from '../api/client';
+import { getMe, putMe, putPreferences, postInbody, getInbodyRecent, ApiError } from '../api/client';
 import {
   GENDER, GOAL, EXPERIENCE_LEVEL, WORKOUT_DURATION, INJURY_PART,
   toEnums, labelOf, toFrequency, toIsoDate, toNumber, formatDateInput,
@@ -366,6 +366,24 @@ export default function Signup() {
    * 토큰이 없으면 401이 나는데, 그때는 빈 폼으로 두고 저장 시점에 안내한다. */
   useEffect(() => {
     let cancelled = false;
+
+    /* 인바디도 최근 1건을 불러와 채운다 — 테스트 단계에서 값을 반복 수정하기 위함이다.
+     * 측정일은 오늘로 두고(같은 날짜로 다시 저장하면 409) 수치만 직전 값에서 이어 고친다.
+     * 기록이 없으면 getInbodyRecent가 null을 준다(404는 정상 케이스). */
+    getInbodyRecent()
+      .then((last) => {
+        if (cancelled || !last) return;
+        setForm((f) => ({
+          ...f,
+          weightKg: last.weightKg ?? f.weightKg,
+          skeletalMuscleMassKg: last.skeletalMuscleMassKg ?? f.skeletalMuscleMassKg,
+          bodyFatMassKg: last.bodyFatMassKg ?? f.bodyFatMassKg,
+          bodyFatPct: last.bodyFatPct ?? f.bodyFatPct,
+          bmrKcal: last.bmrKcal ?? f.bmrKcal,
+        }));
+      })
+      .catch(() => { /* 미로그인·조회 실패 — 빈 값으로 진행 */ });
+
     getMe()
       .then((me) => {
         if (cancelled || !me) return;

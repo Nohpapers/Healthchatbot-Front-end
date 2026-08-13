@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exchangeCode } from '../api/auth';
-import { getMe } from '../api/client';
 import { mono } from '../constants';
 
 /**
@@ -25,15 +24,17 @@ export default function OAuthCallback() {
       return;
     }
 
-    /* 토큰을 받은 뒤 프로필 완성 여부로 행선지를 가른다 (signup_profile_api_spec.md 2-1).
-     * 소셜 로그인은 users에 name만 있는 최소 row를 만들기 때문에, 첫 로그인 유저는
-     * gender·heightCm이 비어 있고 profileCompleted=false다 → 회원가입 화면으로 보낸다.
-     * 프로필 조회가 실패해도 로그인 자체는 성공한 상태이므로 메인으로 통과시킨다. */
+    /* 원래는 프로필 완성 여부로 행선지를 갈랐다 (signup_profile_api_spec.md 2-1) —
+     * profileCompleted=false면 /signup, 아니면 /chat.
+     * 지금은 테스트 단계라 입력 데이터를 반복해서 고쳐야 하므로, 완성 여부와 무관하게
+     * 항상 회원가입 화면으로 보낸다. 회원가입은 INSERT가 아니라 UPDATE이고 진입 시
+     * 현재 값을 불러와 채우므로(Signup.js), 재로그인할 때마다 수정 화면이 된다.
+     * 원복하려면 아래 destination을
+     *   me && me.profileCompleted === false ? '/signup' : '/chat'
+     * 로 되돌리면 된다. */
     exchangeCode(code)
-      .then(() => getMe().catch(() => null))
-      .then((me) => {
-        const destination = me && me.profileCompleted === false ? '/signup' : '/chat';
-        navigate(destination, { replace: true });
+      .then(() => {
+        navigate('/signup', { replace: true });
       })
       .catch((err) => setError(err.message || '로그인에 실패했습니다.'));
   }, [params, navigate]);
